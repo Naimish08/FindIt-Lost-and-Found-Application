@@ -1,56 +1,40 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Alert } from "react-native";
 import InputField from "./common/InputField";
 import PrimaryButton from "./common/PrimaryButton";
 import CheckboxText from "./common/CheckboxText";
 import { Link } from "expo-router";
 import LogoHeader from "./common/LogoHeader";
-import { EXPO_PUBLIC_API_URL } from "@env";
+import { useAuth } from "../context/AuthContext";
 
 const RegisterForm = () => {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const { register } = useAuth();
 
   const handleRegister = async () => {
-  if (!username || !email || !password || !confirmPassword) {
-    alert("Please fill out all fields.");
-    return;
-  }
-
-  if (password !== confirmPassword) {
-    alert("Passwords do not match!");
-    return;
-  }
-
-  try {
-    const response = await fetch(`${EXPO_PUBLIC_API_URL}/register`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        username,
-        email,
-        password,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      alert("Account created successfully!");
-      console.log("User created:", data);
-    } else {
-      alert(`Error: ${data.error}`);
+    if (!username || !email || !password || !confirmPassword) {
+      Alert.alert("Error", "Please fill out all fields.");
+      return;
     }
-  } catch (error) {
-    console.error("Registration failed:", error);
-    alert("Something went wrong. Please try again.");
-  }
-};
 
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match!");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await register(username, email, password);
+    } catch (error: any) {
+      Alert.alert("Registration Failed", error.message || "Something went wrong. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -65,7 +49,7 @@ const RegisterForm = () => {
 
       <CheckboxText />
 
-      <PrimaryButton title="Create Account" onPress={handleRegister} />
+      <PrimaryButton title={isLoading ? "Creating Account..." : "Create Account"} onPress={handleRegister} disabled={isLoading} />
 
       <Text style={styles.footer}>
         Already have an account?{" "}

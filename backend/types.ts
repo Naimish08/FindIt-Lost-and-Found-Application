@@ -2,7 +2,7 @@ export interface User {
   userID?: number;
   username: string;
   email: string;
-  password: string;
+  // password is managed by Supabase Auth, not stored in database
   profilePicture?: string;
 }
 
