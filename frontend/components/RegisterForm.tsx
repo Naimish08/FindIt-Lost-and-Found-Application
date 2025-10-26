@@ -5,17 +5,16 @@ import PrimaryButton from "./common/PrimaryButton";
 import CheckboxText from "./common/CheckboxText";
 import { Link } from "expo-router";
 import LogoHeader from "./common/LogoHeader";
-import { useAuth } from "../context/AuthContext";
-
+import { supabase } from '../lib/supabase'
 const RegisterForm = () => {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
   const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const { register } = useAuth();
 
-  const handleRegister = async () => {
+
+  async function signUpWithEmail() {
     if (!username || !email || !password || !confirmPassword) {
       Alert.alert("Error", "Please fill out all fields.");
       return;
@@ -26,15 +25,19 @@ const RegisterForm = () => {
       return;
     }
 
-    setIsLoading(true);
-    try {
-      await register(username, email, password);
-    } catch (error: any) {
-      Alert.alert("Registration Failed", error.message || "Something went wrong. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    setLoading(true)
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.signUp({
+      email: email,
+      password: password,
+    })
+
+    if (error) Alert.alert(error.message)
+    if (!session) Alert.alert('Please check your inbox for email verification!')
+    setLoading(false)
+  }
 
   return (
     <View style={styles.container}>
@@ -49,7 +52,7 @@ const RegisterForm = () => {
 
       <CheckboxText />
 
-      <PrimaryButton title={isLoading ? "Creating Account..." : "Create Account"} onPress={handleRegister} disabled={isLoading} />
+      <PrimaryButton title={loading ? "Creating Account..." : "Create Account"} onPress={signUpWithEmail} disabled={loading} />
 
       <Text style={styles.footer}>
         Already have an account?{" "}

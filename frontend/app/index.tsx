@@ -1,10 +1,12 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet, ActivityIndicator, Text } from 'react-native';
 import { router } from 'expo-router';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../contexts/AuthContext';  // Import the hook, *not* the provider!
 
 export default function Index() {
   const { isAuthenticated, loading } = useAuth();
+  console.log(isAuthenticated);
+  
 
   useEffect(() => {
     if (!loading) {

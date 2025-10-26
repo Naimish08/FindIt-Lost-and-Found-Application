@@ -3,30 +3,24 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import InputField from "./common/InputField";
 import PrimaryButton from "./common/PrimaryButton";
 import { Link } from "expo-router";
+import { supabase } from '../lib/supabase'
 import LogoHeader from "./common/LogoHeader";
-import { useAuth } from "../context/AuthContext";
 
 const LoginForm: React.FC = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("Error", "Please enter both email and password.");
-      return;
-    }
+  async function signInWithEmail() {
+    setLoading(true)
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password,
+    })
 
-    setIsLoading(true);
-    try {
-      await login(email, password);
-    } catch (error: any) {
-      Alert.alert("Login Failed", error.message || "Invalid email or password");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    if (error) Alert.alert(error.message)
+    setLoading(false)
+  }
 
   return (
     <View style={styles.container}>
@@ -56,7 +50,7 @@ const LoginForm: React.FC = () => {
           <Text style={styles.forgotText}>Forgot Password?</Text>
         </TouchableOpacity>
 
-        <PrimaryButton title={isLoading ? "Logging in..." : "Log In"} onPress={handleLogin} disabled={isLoading} />
+        <PrimaryButton title={loading ? "Logging in..." : "Log In"} onPress={signInWithEmail} disabled={loading} />
       </View>
 
       <Text style={styles.footer}>
