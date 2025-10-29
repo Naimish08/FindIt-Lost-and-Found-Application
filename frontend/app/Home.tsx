@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
  
 import {
   View,
@@ -10,51 +10,63 @@ import {
   RefreshControl,
   SafeAreaView,
   StatusBar,
+  Alert,
+  Modal,
+  Dimensions,
+  Pressable,
 } from 'react-native';
+import { supabase } from '../lib/supabase';
+import { Ionicons } from '@expo/vector-icons';
 
-// Mock data for demonstration - replace with your API call later
-const MOCK_ITEMS = [
-  {
-    postid: 1,
-    location: 'Near Central Park',
-    description: 'Black Wallet with various cards and a driver\'s license.',
-    dateposted: '2025-10-25T10:30:00Z',
-    images: ['https://via.placeholder.com/100x100/333/fff?text=Wallet'],
-  },
-  {
-    postid: 2,
-    location: 'Near Main Street',
-    description: 'Golden Retriever with a red collar. No tags.',
-    dateposted: '2025-10-24T14:20:00Z',
-    images: ['https://via.placeholder.com/100x100/f4a460/fff?text=Dog'],
-  },
-  {
-    postid: 3,
-    location: 'University Campus',
-    description: 'Set of Keys on a blue lanyard with a university logo.',
-    dateposted: '2025-10-23T09:15:00Z',
-    images: ['https://via.placeholder.com/100x100/4a90e2/fff?text=Keys'],
-  },
-];
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface LostItemPost {
-  postid: number;
-  location: string;
+  postid: string | number;
+  userid: string | number;
   description: string;
-  dateposted: string;
+  location: string;
   images: string[];
+  dateposted: string;
+  item_title?: string;
 }
 
 export default function Home() {
-  const [items, setItems] = useState<LostItemPost[]>(MOCK_ITEMS);
+  const [items, setItems] = useState<LostItemPost[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const fetchItems = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch items directly from Supabase
+      const { data, error } = await supabase
+        .from('lost_item_posts')
+        .select('*')
+        .order('dateposted', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching items:', error);
+        Alert.alert('Error', 'Failed to load items');
+      } else {
+        setItems(data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching items:', error);
+      Alert.alert('Error', 'Failed to load items');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchItems();
+  }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
-    // TODO: Replace with actual API call
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1000);
+    fetchItems();
   };
 
   const handleReportItem = () => {
@@ -147,6 +159,9 @@ interface ItemCardProps {
 }
 
 const ItemCard: React.FC<ItemCardProps> = ({ item, onClaim }) => {
+  const [showImageViewer, setShowImageViewer] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -168,42 +183,125 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, onClaim }) => {
     return text.substring(0, maxLength).trim() + '...';
   };
 
+  const handleImagePress = () => {
+    if (item.images && item.images.length > 0) {
+      setCurrentImageIndex(0);
+      setShowImageViewer(true);
+    }
+  };
+
+  const handleNextImage = () => {
+    if (item.images && currentImageIndex < item.images.length - 1) {
+      setCurrentImageIndex(currentImageIndex + 1);
+    }
+  };
+
+  const handlePreviousImage = () => {
+    if (currentImageIndex > 0) {
+      setCurrentImageIndex(currentImageIndex - 1);
+    }
+  };
+
   return (
-    <TouchableOpacity style={styles.card} activeOpacity={0.95}>
-      <View style={styles.cardContent}>
-        <View style={styles.cardLeft}>
-          <Text style={styles.locationText}>{item.location}</Text>
-          <Text style={styles.statusText}>
-            Lost: {truncateDescription(item.description)}
-          </Text>
-          <Text style={styles.dateText}>
-            {formatDate(item.dateposted)}
-          </Text>
+    <>
+      <TouchableOpacity style={styles.card} activeOpacity={0.95}>
+        <View style={styles.cardContent}>
+          <View style={styles.cardLeft}>
+            <Text style={styles.locationText}>{item.location}</Text>
+            <Text style={styles.statusText}>
+              Lost: {truncateDescription(item.description)}
+            </Text>
+            <Text style={styles.dateText}>
+              {formatDate(item.dateposted)}
+            </Text>
+
+            <TouchableOpacity 
+              style={styles.claimButton} 
+              onPress={onClaim}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.claimButtonText}>Claim Item</Text>
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity 
-            style={styles.claimButton} 
-            onPress={onClaim}
+            style={styles.cardRight}
+            onPress={handleImagePress}
             activeOpacity={0.8}
           >
-            <Text style={styles.claimButtonText}>Claim Item</Text>
+            {item.images && item.images.length > 0 ? (
+              <Image
+                source={{ uri: item.images[0] }}
+                style={styles.itemImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.placeholderImage}>
+                <Text style={styles.placeholderIcon}>📦</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
+      </TouchableOpacity>
 
-        <View style={styles.cardRight}>
-          {item.images && item.images.length > 0 ? (
+      {/* Full Screen Image Viewer Modal */}
+      <Modal
+        visible={showImageViewer}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowImageViewer(false)}
+      >
+        <View style={styles.imageViewerContainer}>
+          {/* Close Button */}
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setShowImageViewer(false)}
+          >
+            <Ionicons name="close" size={32} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          {/* Image */}
+          {item.images && item.images.length > 0 && (
             <Image
-              source={{ uri: item.images[0] }}
-              style={styles.itemImage}
-              resizeMode="cover"
+              source={{ uri: item.images[currentImageIndex] }}
+              style={styles.fullScreenImage}
+              resizeMode="contain"
             />
-          ) : (
-            <View style={styles.placeholderImage}>
-              <Text style={styles.placeholderIcon}>📦</Text>
+          )}
+
+          {/* Navigation Arrows */}
+          {item.images && item.images.length > 1 && (
+            <>
+              {currentImageIndex > 0 && (
+                <TouchableOpacity
+                  style={styles.navButtonLeft}
+                  onPress={handlePreviousImage}
+                >
+                  <Ionicons name="chevron-back" size={32} color="#FFFFFF" />
+                </TouchableOpacity>
+              )}
+              {currentImageIndex < item.images.length - 1 && (
+                <TouchableOpacity
+                  style={styles.navButtonRight}
+                  onPress={handleNextImage}
+                >
+                  <Ionicons name="chevron-forward" size={32} color="#FFFFFF" />
+                </TouchableOpacity>
+              )}
+            </>
+          )}
+
+          {/* Image Counter */}
+          {item.images && item.images.length > 1 && (
+            <View style={styles.imageCounter}>
+              <Text style={styles.imageCounterText}>
+                {currentImageIndex + 1} / {item.images.length}
+              </Text>
             </View>
           )}
         </View>
-      </View>
-    </TouchableOpacity>
+      </Modal>
+    </>
   );
 };
 
@@ -430,6 +528,67 @@ const styles = StyleSheet.create({
   navTextActive: {
     fontSize: 12,
     color: '#4A90E2',
+    fontWeight: '600',
+  },
+  // Image Viewer Styles
+  imageViewerContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 1000,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullScreenImage: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+  },
+  navButtonLeft: {
+    position: 'absolute',
+    left: 20,
+    top: '50%',
+    transform: [{ translateY: -22 }],
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  navButtonRight: {
+    position: 'absolute',
+    right: 20,
+    top: '50%',
+    transform: [{ translateY: -22 }],
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageCounter: {
+    position: 'absolute',
+    bottom: 50,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  imageCounterText: {
+    color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: '600',
   },
 });

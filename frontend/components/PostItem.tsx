@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
+import * as Location from 'expo-location';
 
 import {
   View,
@@ -28,6 +29,7 @@ export default function PostItem() {
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [error, setError] = useState('');
+  const [isLocating, setIsLocating] = useState(false);
 
   const uploadPhotosAndGetUrls = async (uris: string[], userId: string | number) => {
     if (uris.length === 0) return [] as string[];
@@ -117,6 +119,50 @@ export default function PostItem() {
     setShowDatePicker(false);
     if (selectedDate) {
       setDate(selectedDate);
+    }
+  };
+
+  const formatAddress = (place: Location.LocationGeocodedAddress) => {
+    const parts = [
+      place.name || place.street || '',
+      place.city || place.subregion || '',
+      place.region || '',
+      place.postalCode || '',
+      place.country || '',
+    ].filter(Boolean);
+    return parts.join(', ');
+  };
+
+  const handleUseMyLocation = async () => {
+    try {
+      setError('');
+      setIsLocating(true);
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setError('Location permission is required to fetch your address.');
+        return;
+      }
+
+      const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const coords = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      };
+      const results = await Location.reverseGeocodeAsync(coords);
+      if (results && results.length > 0) {
+        const addr = formatAddress(results[0]);
+        if (addr) {
+          setLocation(addr);
+        } else {
+          setError('Could not derive a readable address from your location.');
+        }
+      } else {
+        setError('No address results found for your location.');
+      }
+    } catch (e: any) {
+      setError(e?.message || 'Failed to fetch your location.');
+    } finally {
+      setIsLocating(false);
     }
   };
 
@@ -266,6 +312,11 @@ export default function PostItem() {
               value={location}
               onChangeText={setLocation}
             />
+            <TouchableOpacity style={styles.useLocationButton} onPress={handleUseMyLocation} disabled={isLocating}>
+              <Text style={[styles.useLocationText, isLocating && styles.useLocationTextDisabled]}>
+                {isLocating ? 'Locating…' : 'Use my location'}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -445,6 +496,21 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#333',
     padding: 0,
+  },
+  useLocationButton: {
+    marginLeft: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    backgroundColor: '#F0F6FF',
+  },
+  useLocationText: {
+    color: '#2F6AE0',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  useLocationTextDisabled: {
+    color: '#9BB3EA',
   },
   dateTimeContainer: {
     flexDirection: 'row',
