@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import InputField from "./common/InputField";
 import PrimaryButton from "./common/PrimaryButton";
-import { Link } from "expo-router";
+import { Link, router } from "expo-router";
 import { supabase } from '../lib/supabase'
 import LogoHeader from "./common/LogoHeader";
 
@@ -13,12 +13,16 @@ const LoginForm: React.FC = () => {
 
   async function signInWithEmail() {
     setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error, data } = await supabase.auth.signInWithPassword({
       email: email,
       password: password,
     })
 
-    if (error) Alert.alert(error.message)
+    if (error) {
+      Alert.alert(error.message)
+    } else if (data.session) {
+      router.replace('/(protected)')
+    }
     setLoading(false)
   }
 

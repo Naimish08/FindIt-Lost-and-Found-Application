@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
+import { File } from 'expo-file-system';
+import { Buffer } from 'buffer';
 
 import {
   View,
@@ -12,12 +15,14 @@ import {
   Platform,
   Pressable,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
+import { useRouter } from 'expo-router';
 
 export default function PostItem() {
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photos, setPhotos] = useState<string[]>([]);
   const [title, setTitle] = useState('');
@@ -27,36 +32,80 @@ export default function PostItem() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [error, setError] = useState('');
 
-  const handleAddPhoto = async () => {
-  const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (!permissionResult.granted) {
-    alert("Permission to access camera roll is required!");
-    return;
-  }
-  let result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    allowsEditing: true,
-    quality: 1,
-  });
+  const uploadImageToSupabase = async (uri: string) => {
+    try {
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
 
-  if (!result.canceled && result.assets && result.assets.length > 0) {
-    setPhotos((prev) => [...prev, result.assets[0].uri]);
-  }
-};
+      // Create a File object from the URI
+      const file = File.fromUri(uri);
+
+      // Read file as base64
+      const fileBase64 = await file.readAsStringAsync({ encoding: 'base64' });
+      const fileBuffer = Buffer.from(fileBase64, 'base64');
+
+      const { data, error } = await supabase.storage
+        .from('lost-item-images')
+        .upload(fileName, fileBuffer, {
+          contentType: 'image/jpeg',
+          upsert: false,
+        });
+
+      if (error) throw error;
+
+      const { data: urlData } = supabase.storage
+        .from('lost-item-images')
+        .getPublicUrl(fileName);
+
+      return urlData.publicUrl;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      throw error;
+    }
+  };
+
+  const handleAddPhoto = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      alert("Permission to access camera roll is required!");
+      return;
+    }
+    
+    try {
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8, // Reduced quality for better upload performance
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setIsSubmitting(true); // Show loading state while uploading
+        const publicUrl = await uploadImageToSupabase(result.assets[0].uri);
+        setPhotos((prev) => [...prev, publicUrl]);
+      }
+    } catch (error) {
+      setError('Failed to upload image. Please try again.');
+      console.error('Error in handleAddPhoto:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleRemovePhoto = (index: number) => {
     const newPhotos = photos.filter((_, i) => i !== index);
     setPhotos(newPhotos);
   };
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
+  const handleDateChange = (
+    event: DateTimePickerEvent,
+    selectedDate?: Date
+  ) => {
     setShowDatePicker(false);
     if (selectedDate) {
       setDate(selectedDate);
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!title || !location || !date) {
       setError('Please fill in all required fields');
       return;
@@ -65,37 +114,41 @@ export default function PostItem() {
     setIsSubmitting(true);
     setError('');
 
-    // Create the item without waiting
-    supabase
-      .from('lost_item_posts')
-      .insert([
-        {
-          userid: 1,
-          item_title: title,
-          description: description,
-          location: location,
-          dateposted: date.toISOString(),
-          images: photos.length > 0 ? photos : null, // Only send if we have photos
-        },
-      ])
-      .select()
-      .then(({ data, error }) => {
-        if (error) {
-          setError(error.message);
-          console.error('Error submitting form:', error);
-          return;
-        }
-        // TODO: Navigate or show success message
-      })
-      .catch((error) => {
-        setError('An unexpected error occurred');
-        console.error('Error:', error);
-      })
-      .finally(() => {
-        setIsSubmitting(false);
-      });
-  };  const handleCancel = () => {
-    // TODO: Navigate back
+    try {
+      // The photos array now contains public URLs from Supabase Storage
+      const { data, error } = await supabase
+        .from('lost_item_posts')
+        .insert([
+          {
+            userid: 1,
+            item_title: title,
+            description: description,
+            location: location,
+            dateposted: date.toISOString(),
+            images: photos.length > 0 ? photos : null,
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        setError(error.message);
+        console.error('Error submitting form:', error);
+        return;
+      }
+
+      // Navigate back after successful submission
+      router.back();
+    } catch (error) {
+      setError('An unexpected error occurred');
+      console.error('Error:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancel = () => {
+    router.back();
   };
 
   return (
