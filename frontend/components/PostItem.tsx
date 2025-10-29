@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import * as ImagePicker from 'expo-image-picker';
+
 import {
   View,
   Text,
@@ -20,10 +22,22 @@ export default function PostItem() {
   const [location, setLocation] = useState('');
   const [dateTime, setDateTime] = useState('');
 
-  const handleAddPhoto = () => {
-    // TODO: Implement image picker
-    console.log('Add photo');
-  };
+  const handleAddPhoto = async () => {
+  const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!permissionResult.granted) {
+    alert("Permission to access camera roll is required!");
+    return;
+  }
+  let result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    allowsEditing: true,
+    quality: 1,
+  });
+
+  if (!result.canceled && result.assets && result.assets.length > 0) {
+    setPhotos((prev) => [...prev, result.assets[0].uri]);
+  }
+};
 
   const handleRemovePhoto = (index: number) => {
     const newPhotos = photos.filter((_, i) => i !== index);
