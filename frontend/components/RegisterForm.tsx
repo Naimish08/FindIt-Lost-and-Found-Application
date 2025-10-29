@@ -35,7 +35,18 @@ const RegisterForm = () => {
     })
 
     if (error) Alert.alert(error.message)
-    if (!session) Alert.alert('Please check your inbox for email verification!')
+    const { data: { user } } = await supabase.auth.getUser();  
+    const {errorDB} = await supabase.from('users').insert({
+    email: email, 
+    username: username,
+    userid: user?.id
+    })
+
+    if(errorDB){
+      Alert.alert('Error', 'Failed to save user to database');
+    }
+
+    if(!error && !errorDB) Alert.alert('Account created successfully!')
     setLoading(false)
   }
 

@@ -7,22 +7,26 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  SafeAreaView,
   Platform,
+  Pressable,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '@/lib/supabase';
 
 export default function PostItem() {
-    
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [photos, setPhotos] = useState<string[]>([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
-  const [dateTime, setDateTime] = useState('');
+  const [date, setDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [error, setError] = useState('');
 
   const handleAddPhoto = () => {
     // TODO: Implement image picker
-    console.log('Add photo');
   };
 
   const handleRemovePhoto = (index: number) => {
@@ -30,14 +34,53 @@ export default function PostItem() {
     setPhotos(newPhotos);
   };
 
-  const handleSubmit = () => {
-    // TODO: Submit the form
-    console.log('Submit report:', { title, description, location, dateTime, photos });
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      setDate(selectedDate);
+    }
   };
 
-  const handleCancel = () => {
+  const handleSubmit = () => {
+    if (!title || !location || !date) {
+      setError('Please fill in all required fields');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError('');
+
+    // Create the item without waiting
+    supabase
+      .from('lost_item_posts')
+      .insert([
+        {
+          userid: 1,
+          item_title: title,
+          description: description,
+          location: location,
+          dateposted: date.toISOString(),
+          images: photos.length > 0 ? photos : null, // Only send if we have photos
+        },
+      ])
+      .select()
+      .then(({ data, error }) => {
+        if (error) {
+          setError(error.message);
+          console.error('Error submitting form:', error);
+          return;
+        }
+        // TODO: Navigate or show success message
+      })
+      .catch((error) => {
+        setError('An unexpected error occurred');
+        console.error('Error:', error);
+      })
+      .finally(() => {
+        setIsSubmitting(false);
+      });
+  };  const handleCancel = () => {
     // TODO: Navigate back
-    console.log('Cancel');
   };
 
   return (
@@ -143,24 +186,40 @@ export default function PostItem() {
           </Text>
           <View style={styles.dateTimeContainer}>
             <Ionicons name="calendar-outline" size={20} color="#999" style={styles.dateIcon} />
-            <TextInput
+            <Pressable
               style={styles.dateTimeInput}
-              placeholder="mm/dd/yyyy, --:-- --"
-              placeholderTextColor="#999"
-              value={dateTime}
-              onChangeText={setDateTime}
-            />
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Text style={{ color: '#333' }}>
+                {date ? date.toLocaleString() : 'Select date & time'}
+              </Text>
+            </Pressable>
             <Ionicons name="time-outline" size={20} color="#999" />
+            {showDatePicker && (
+              <DateTimePicker
+                value={date}
+                mode="datetime"
+                display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                onChange={handleDateChange}
+              />
+            )}
           </View>
         </View>
 
+        {error ? (
+          <Text style={styles.errorText}>{error}</Text>
+        ) : null}
+        
         {/* Submit Button */}
         <TouchableOpacity 
-          style={styles.submitButton}
+          style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
           onPress={handleSubmit}
           activeOpacity={0.8}
+          disabled={isSubmitting}
         >
-          <Text style={styles.submitButtonText}>Submit Report</Text>
+          <Text style={styles.submitButtonText}>
+            {isSubmitting ? 'Submitting...' : 'Submit Report'}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -171,6 +230,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 14,
+    marginBottom: 16,
+    textAlign: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -326,5 +391,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#A5C6ED',
+    opacity: 0.7,
   },
 });
