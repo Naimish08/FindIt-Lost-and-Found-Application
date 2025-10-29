@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 
 import {
   View,
@@ -11,6 +12,7 @@ import {
   Image,
   Platform,
   Pressable,
+  Alert,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,6 +28,68 @@ export default function PostItem() {
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [error, setError] = useState('');
+
+  const uploadPhotosAndGetUrls = async (uris: string[], userId: string | number) => {
+    if (uris.length === 0) return [] as string[];
+    const bucket = 'lost-item-images';
+    const uploadedUrls: string[] = [];
+
+    const base64ToUint8Array = (base64: string) => {
+      const hasAtob = typeof globalThis.atob === 'function';
+      const binaryString = hasAtob
+        ? atob(base64)
+        : Buffer.from(base64, 'base64').toString('binary');
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      return bytes;
+    };
+
+    for (let i = 0; i < uris.length; i++) {
+      const uri = uris[i];
+      try {
+        const fileExtGuess = uri.split('.').pop()?.split('?')[0] || 'jpeg';
+        const path = `${userId}/${Date.now()}-${i}.${fileExtGuess}`;
+
+        // Read file as base64 and convert to raw bytes (Uint8Array)
+        const base64 = await FileSystem.readAsStringAsync(uri, {
+          encoding: 'base64' as any,
+        });
+        const bytes = base64ToUint8Array(base64);
+        const contentType = `image/${fileExtGuess}`;
+        const payload: any = bytes; // Pass Uint8Array directly to Supabase
+
+        const { error: uploadError } = await supabase.storage
+          .from(bucket)
+          .upload(path, payload, {
+            contentType,
+            upsert: true,
+          });
+
+        if (uploadError) {
+          const scopedError = new Error(`storage.upload failed: ${uploadError.message || 'unknown error'}`);
+          // Attach original for debugging
+          // @ts-ignore
+          scopedError.cause = uploadError;
+          throw scopedError;
+        }
+
+        const { data: publicData } = supabase.storage
+          .from(bucket)
+          .getPublicUrl(path);
+
+        if (publicData?.publicUrl) {
+          uploadedUrls.push(publicData.publicUrl);
+        }
+      } catch (e: any) {
+        throw new Error(e?.message || 'Failed to upload image (storage)');
+      }
+    }
+
+    return uploadedUrls;
+  };
 
   const handleAddPhoto = async () => {
   const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -56,7 +120,7 @@ export default function PostItem() {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!title || !location || !date) {
       setError('Please fill in all required fields');
       return;
@@ -65,35 +129,46 @@ export default function PostItem() {
     setIsSubmitting(true);
     setError('');
 
-    // Create the item without waiting
-    supabase
-      .from('lost_item_posts')
-      .insert([
-        {
-          userid: 1,
-          item_title: title,
-          description: description,
-          location: location,
-          dateposted: date.toISOString(),
-          images: photos.length > 0 ? photos : null, // Only send if we have photos
-        },
-      ])
-      .select()
-      .then(({ data, error }) => {
-        if (error) {
-          setError(error.message);
-          console.error('Error submitting form:', error);
-          return;
-        }
-        // TODO: Navigate or show success message
-      })
-      .catch((error) => {
-        setError('An unexpected error occurred');
-        console.error('Error:', error);
-      })
-      .finally(() => {
-        setIsSubmitting(false);
-      });
+    try {
+      const { data: userData, error: userErr } = await supabase.auth.getUser();
+      if (userErr) {
+        setError(userErr.message);
+        return;
+      }
+      const userId = userData.user?.id;
+      if (!userId) {
+        setError('You must be signed in to submit a report.');
+        return;
+      }
+      const uploadedUrls = await uploadPhotosAndGetUrls(photos, userId);
+
+      const { error: insertError } = await supabase
+        .from('lost_item_posts')
+        .insert([
+          {
+            userid: userId,
+            item_title: title,
+            description: description,
+            location: location,
+            dateposted: date.toISOString(),
+            images: uploadedUrls.length > 0 ? uploadedUrls : null,
+          },
+        ]);
+
+      if (insertError) {
+        const msg = `insert lost_item_posts failed: ${insertError.message || 'unknown error'}`;
+        setError(msg);
+        console.error(msg, insertError);
+        return;
+      }
+
+      Alert.alert('Success', 'Your lost item report has been submitted.');
+    } catch (err: any) {
+      setError(err?.message || 'An unexpected error occurred');
+      console.error('Error:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };  const handleCancel = () => {
     // TODO: Navigate back
   };
