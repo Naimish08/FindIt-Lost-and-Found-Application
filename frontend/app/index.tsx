@@ -8,7 +8,7 @@ export default function Index() {
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
-      // ✅ If user already logged in, go to protected tabs directly
+      // If user already logged in, go to protected tabs directly
       router.replace('/(protected)/(tabs)' as any);
     }
   }, [isAuthenticated, loading]);
@@ -22,7 +22,7 @@ export default function Index() {
     );
   }
 
-  // 🧭 If user not logged in → show welcome screen
+  // If user not logged in → show welcome screen
   if (!isAuthenticated) {
     return (
       <View style={styles.container}>
@@ -48,7 +48,7 @@ export default function Index() {
     );
   }
 
-  // temporary fallback (shouldn't happen)
+  // temporary fallback 
   return null;
 }
 
