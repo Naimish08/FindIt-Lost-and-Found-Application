@@ -6,6 +6,12 @@ import { useAuth } from '../contexts/AuthContext';
 export default function Index() {
   const { isAuthenticated, loading } = useAuth();
 
+  // Log only when these values change (reduces noisy per-render logs)
+  useEffect(() => {
+    console.log("Auth:", isAuthenticated);
+    console.log("Loading:", loading);
+  }, [isAuthenticated, loading]);
+
   useEffect(() => {
     if (!loading && isAuthenticated) {
       // If user already logged in, go to protected tabs directly
