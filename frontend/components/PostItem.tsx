@@ -19,6 +19,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
+import { Colors, Radius, Shadow } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function PostItem() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,6 +32,7 @@ export default function PostItem() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [error, setError] = useState('');
   const [isLocating, setIsLocating] = useState(false);
+  const colorScheme = useColorScheme();
 
   const uploadPhotosAndGetUrls = async (uris: string[], userId: string | number) => {
     if (uris.length === 0) return [] as string[];
@@ -220,15 +223,15 @@ export default function PostItem() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }] }>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: Colors[colorScheme ?? 'light'].surface, borderBottomColor: Colors[colorScheme ?? 'light'].border }]}>
         <TouchableOpacity onPress={handleCancel} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons name="arrow-back" size={24} color={Colors[colorScheme ?? 'light'].text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Report a Lost Item</Text>
+        <Text style={[styles.headerTitle, { color: Colors[colorScheme ?? 'light'].text }]}>Report a Lost Item</Text>
         <TouchableOpacity onPress={handleCancel}>
-          <Text style={styles.cancelText}>Cancel</Text>
+          <Text style={[styles.cancelText, { color: Colors[colorScheme ?? 'light'].primary }]}>Cancel</Text>
         </TouchableOpacity>
       </View>
 
@@ -239,7 +242,7 @@ export default function PostItem() {
       >
         {/* Add Photos Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Add Photos</Text>
+          <Text style={[styles.sectionTitle, { color: Colors[colorScheme ?? 'light'].text }]}>Add Photos</Text>
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false}
@@ -247,11 +250,11 @@ export default function PostItem() {
           >
             {/* Add Photo Button */}
             <TouchableOpacity 
-              style={styles.addPhotoButton}
+              style={[styles.addPhotoButton, { borderColor: Colors[colorScheme ?? 'light'].primary, backgroundColor: (colorScheme === 'dark') ? 'rgba(37, 99, 235, 0.12)' : '#F3F6FF' }]}
               onPress={handleAddPhoto}
             >
-              <Ionicons name="camera-outline" size={32} color="#4A90E2" />
-              <Text style={styles.addPhotoText}>Add Photo</Text>
+              <Ionicons name="camera-outline" size={32} color={Colors[colorScheme ?? 'light'].primary} />
+              <Text style={[styles.addPhotoText, { color: Colors[colorScheme ?? 'light'].primary }]}>Add Photo</Text>
             </TouchableOpacity>
 
             {/* Display added photos */}
@@ -259,10 +262,10 @@ export default function PostItem() {
               <View key={index} style={styles.photoItem}>
                 <Image source={{ uri: photo }} style={styles.photoImage} />
                 <TouchableOpacity 
-                  style={styles.removePhotoButton}
+                  style={[styles.removePhotoButton, { backgroundColor: Colors[colorScheme ?? 'light'].surface }]}
                   onPress={() => handleRemovePhoto(index)}
                 >
-                  <Ionicons name="close-circle" size={24} color="#FF3B30" />
+                  <Ionicons name="close-circle" size={24} color={Colors[colorScheme ?? 'light'].danger} />
                 </TouchableOpacity>
               </View>
             ))}
@@ -271,11 +274,11 @@ export default function PostItem() {
 
         {/* Item Title */}
         <View style={styles.section}>
-          <Text style={styles.label}>
+          <Text style={[styles.label, { color: Colors[colorScheme ?? 'light'].text }]}>
             Item Title<Text style={styles.required}>*</Text>
           </Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: Colors[colorScheme ?? 'light'].surface, borderColor: Colors[colorScheme ?? 'light'].border, color: Colors[colorScheme ?? 'light'].text, borderRadius: Radius.sm }]}
             placeholder='e.g., "Brown Leather Wallet"'
             placeholderTextColor="#999"
             value={title}
@@ -285,9 +288,9 @@ export default function PostItem() {
 
         {/* Description */}
         <View style={styles.section}>
-          <Text style={styles.label}>Description</Text>
+          <Text style={[styles.label, { color: Colors[colorScheme ?? 'light'].text }]}>Description</Text>
           <TextInput
-            style={[styles.input, styles.textArea]}
+            style={[styles.input, styles.textArea, { backgroundColor: Colors[colorScheme ?? 'light'].surface, borderColor: Colors[colorScheme ?? 'light'].border, color: Colors[colorScheme ?? 'light'].text, borderRadius: Radius.sm }]}
             placeholder="Describe the item and where you last saw it"
             placeholderTextColor="#999"
             value={description}
@@ -300,20 +303,20 @@ export default function PostItem() {
 
         {/* Last Seen Location */}
         <View style={styles.section}>
-          <Text style={styles.label}>
+          <Text style={[styles.label, { color: Colors[colorScheme ?? 'light'].text }]}>
             Last Seen Location<Text style={styles.required}>*</Text>
           </Text>
-          <View style={styles.locationInputContainer}>
+          <View style={[styles.locationInputContainer, { backgroundColor: Colors[colorScheme ?? 'light'].surface, borderColor: Colors[colorScheme ?? 'light'].border, borderRadius: Radius.sm }]}>
             <Ionicons name="location-outline" size={20} color="#999" style={styles.locationIcon} />
             <TextInput
-              style={styles.locationInput}
+              style={[styles.locationInput, { color: Colors[colorScheme ?? 'light'].text }]}
               placeholder="Search for a location"
               placeholderTextColor="#999"
               value={location}
               onChangeText={setLocation}
             />
-            <TouchableOpacity style={styles.useLocationButton} onPress={handleUseMyLocation} disabled={isLocating}>
-              <Text style={[styles.useLocationText, isLocating && styles.useLocationTextDisabled]}>
+            <TouchableOpacity style={[styles.useLocationButton, { backgroundColor: (colorScheme === 'dark') ? '#1E293B' : '#EEF2FF' }]} onPress={handleUseMyLocation} disabled={isLocating}>
+              <Text style={[styles.useLocationText, isLocating && styles.useLocationTextDisabled, { color: Colors[colorScheme ?? 'light'].primary }]}>
                 {isLocating ? 'Locating…' : 'Use my location'}
               </Text>
             </TouchableOpacity>
@@ -322,16 +325,16 @@ export default function PostItem() {
 
         {/* Date & Time Lost */}
         <View style={styles.section}>
-          <Text style={styles.label}>
+          <Text style={[styles.label, { color: Colors[colorScheme ?? 'light'].text }]}>
             Date & Time Lost<Text style={styles.required}>*</Text>
           </Text>
-          <View style={styles.dateTimeContainer}>
+          <View style={[styles.dateTimeContainer, { backgroundColor: Colors[colorScheme ?? 'light'].surface, borderColor: Colors[colorScheme ?? 'light'].border, borderRadius: Radius.sm }]}>
             <Ionicons name="calendar-outline" size={20} color="#999" style={styles.dateIcon} />
             <Pressable
               style={styles.dateTimeInput}
               onPress={() => setShowDatePicker(true)}
             >
-              <Text style={{ color: '#333' }}>
+              <Text style={{ color: Colors[colorScheme ?? 'light'].text }}>
                 {date ? date.toLocaleString() : 'Select date & time'}
               </Text>
             </Pressable>
@@ -348,12 +351,12 @@ export default function PostItem() {
         </View>
 
         {error ? (
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={[styles.errorText, { color: Colors[colorScheme ?? 'light'].danger }]}>{error}</Text>
         ) : null}
         
         {/* Submit Button */}
         <TouchableOpacity 
-          style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+          style={[styles.submitButton, { backgroundColor: Colors[colorScheme ?? 'light'].primary, borderRadius: Radius.md }, isSubmitting && styles.submitButtonDisabled]}
           onPress={handleSubmit}
           activeOpacity={0.8}
           disabled={isSubmitting}
@@ -370,7 +373,7 @@ export default function PostItem() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#F9FAFB',
   },
   errorText: {
     color: '#FF3B30',
@@ -386,19 +389,19 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: '#E5E7EB',
   },
   backButton: {
     padding: 4,
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: '700',
+    color: '#111827',
   },
   cancelText: {
     fontSize: 16,
-    color: '#4A90E2',
+    color: '#2563EB',
   },
   scrollView: {
     flex: 1,
@@ -413,13 +416,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: '#111827',
     marginBottom: 12,
   },
   label: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#333',
+    color: '#111827',
     marginBottom: 8,
   },
   required: {
@@ -434,15 +437,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: '#4A90E2',
-    backgroundColor: '#F8FBFF',
+    borderColor: '#2563EB',
+    backgroundColor: '#F3F6FF',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   addPhotoText: {
     fontSize: 12,
-    color: '#4A90E2',
+    color: '#2563EB',
     marginTop: 4,
   },
   photoItem: {
@@ -467,12 +470,12 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#333',
+    color: '#111827',
   },
   textArea: {
     height: 100,
@@ -483,8 +486,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
@@ -494,7 +497,7 @@ const styles = StyleSheet.create({
   locationInput: {
     flex: 1,
     fontSize: 15,
-    color: '#333',
+    color: '#111827',
     padding: 0,
   },
   useLocationButton: {
@@ -502,10 +505,10 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 6,
-    backgroundColor: '#F0F6FF',
+    backgroundColor: '#EEF2FF',
   },
   useLocationText: {
-    color: '#2F6AE0',
+    color: '#2563EB',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -517,8 +520,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
@@ -528,28 +531,23 @@ const styles = StyleSheet.create({
   dateTimeInput: {
     flex: 1,
     fontSize: 15,
-    color: '#333',
+    color: '#111827',
     padding: 0,
   },
   submitButton: {
-    backgroundColor: '#4A90E2',
+    backgroundColor: '#2563EB',
     paddingVertical: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     marginTop: 8,
-    shadowColor: '#4A90E2',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 4,
   },
   submitButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   submitButtonDisabled: {
-    backgroundColor: '#A5C6ED',
-    opacity: 0.7,
+    backgroundColor: '#93B3F6',
+    opacity: 0.8,
   },
 });

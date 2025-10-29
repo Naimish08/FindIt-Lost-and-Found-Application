@@ -14,9 +14,12 @@ import {
   Modal,
   Dimensions,
   Pressable,
+  Platform,
 } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors, Radius, Shadow } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -34,6 +37,7 @@ export default function Home() {
   const [items, setItems] = useState<LostItemPost[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const colorScheme = useColorScheme();
 
   const fetchItems = async () => {
     try {
@@ -83,17 +87,20 @@ export default function Home() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#4A90E2" />
+    <SafeAreaView style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }] }>
+      <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={Colors[colorScheme ?? 'light'].surface} />
       
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: Colors[colorScheme ?? 'light'].surface, borderBottomColor: Colors[colorScheme ?? 'light'].border }] }>
         <View style={styles.headerContent}>
           <View style={styles.logoContainer}>
-            <Text style={styles.logo}>FindIt</Text>
+            <Text style={[styles.logo, { color: Colors[colorScheme ?? 'light'].text }]}>FindIt</Text>
           </View>
           <TouchableOpacity style={styles.profileButton}>
-            <Text style={styles.profileIcon}>👤</Text>
+            <Image
+              source={{ uri: 'https://i.pravatar.cc/72' }}
+              style={styles.profileAvatar}
+            />
           </TouchableOpacity>
         </View>
       </View>
@@ -101,7 +108,7 @@ export default function Home() {
       {/* Action Buttons */}
       <View style={styles.actionButtons}>
         <TouchableOpacity
-          style={styles.reportButton}
+          style={[styles.reportButton, { backgroundColor: Colors[colorScheme ?? 'light'].primary, ...Shadow.card, borderRadius: Radius.lg } ]}
           onPress={handleReportItem}
           activeOpacity={0.7}
         >
@@ -109,17 +116,17 @@ export default function Home() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.searchButton}
+          style={[styles.searchButton, { backgroundColor: Colors[colorScheme ?? 'light'].surface, borderColor: Colors[colorScheme ?? 'light'].border, borderRadius: Radius.lg } ]}
           onPress={handleSearch}
           activeOpacity={0.7}
         >
-          <Text style={styles.searchButtonText}>Search for a Lost Item</Text>
+          <Text style={[styles.searchButtonText, { color: Colors[colorScheme ?? 'light'].text }]}>Search for a Lost Item</Text>
         </TouchableOpacity>
       </View>
 
       {/* Recent Activity Section */}
       <View style={styles.recentActivitySection}>
-        <Text style={styles.sectionTitle}>Recent Activity</Text>
+        <Text style={[styles.sectionTitle, { color: Colors[colorScheme ?? 'light'].text }]}>Recent Activity</Text>
 
         <FlatList
           data={items}
@@ -133,15 +140,15 @@ export default function Home() {
             <RefreshControl 
               refreshing={refreshing} 
               onRefresh={onRefresh}
-              colors={['#4A90E2']}
-              tintColor="#4A90E2"
+              colors={[Colors[colorScheme ?? 'light'].primary]}
+              tintColor={Colors[colorScheme ?? 'light'].primary}
             />
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>📭</Text>
-              <Text style={styles.emptyText}>No items found</Text>
-              <Text style={styles.emptySubtext}>
+              <Text style={[styles.emptyText, { color: Colors[colorScheme ?? 'light'].text } ]}>No items found</Text>
+              <Text style={[styles.emptySubtext, { color: Colors[colorScheme ?? 'light'].textMuted } ]}>
                 Be the first to report a lost item!
               </Text>
             </View>
@@ -161,6 +168,7 @@ interface ItemCardProps {
 const ItemCard: React.FC<ItemCardProps> = ({ item, onClaim }) => {
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const colorScheme = useColorScheme();
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -204,19 +212,19 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, onClaim }) => {
 
   return (
     <>
-      <TouchableOpacity style={styles.card} activeOpacity={0.95}>
+      <TouchableOpacity style={[styles.card, { backgroundColor: Colors[colorScheme ?? 'light'].surface, borderColor: Colors[colorScheme ?? 'light'].border, borderRadius: Radius.md, ...Shadow.card }]} activeOpacity={0.95}>
         <View style={styles.cardContent}>
           <View style={styles.cardLeft}>
-            <Text style={styles.locationText}>{item.location}</Text>
-            <Text style={styles.statusText}>
+            <Text style={[styles.locationText, { color: Colors[colorScheme ?? 'light'].textMuted }]}>{item.location}</Text>
+            <Text style={[styles.statusText, { color: Colors[colorScheme ?? 'light'].text }]}>
               Lost: {truncateDescription(item.description)}
             </Text>
-            <Text style={styles.dateText}>
+            <Text style={[styles.dateText, { color: Colors[colorScheme ?? 'light'].textMuted }]}>
               {formatDate(item.dateposted)}
             </Text>
 
             <TouchableOpacity 
-              style={styles.claimButton} 
+              style={[styles.claimButton, { backgroundColor: Colors[colorScheme ?? 'light'].secondary }]} 
               onPress={onClaim}
               activeOpacity={0.8}
             >
@@ -236,7 +244,7 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, onClaim }) => {
                 resizeMode="cover"
               />
             ) : (
-              <View style={styles.placeholderImage}>
+              <View style={[styles.placeholderImage, { borderColor: Colors[colorScheme ?? 'light'].border }]}>
                 <Text style={styles.placeholderIcon}>📦</Text>
               </View>
             )}
@@ -257,7 +265,7 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, onClaim }) => {
             style={styles.closeButton}
             onPress={() => setShowImageViewer(false)}
           >
-            <Ionicons name="close" size={32} color="#FFFFFF" />
+          <Ionicons name="close" size={32} color="#FFFFFF" />
           </TouchableOpacity>
 
           {/* Image */}
@@ -305,21 +313,20 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, onClaim }) => {
   );
 };
 
+const HEADER_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 8 : 12;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#F9FAFB',
   },
   header: {
-    backgroundColor: '#4A90E2',
-    paddingTop: 15,
-    paddingBottom: 15,
+    backgroundColor: '#FFFFFF',
+    paddingTop: HEADER_TOP,
+    paddingBottom: 12,
     paddingHorizontal: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   headerContent: {
     flexDirection: 'row',
@@ -335,25 +342,26 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
   logo: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#111827',
   },
   profileButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'white',
+    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
   },
   profileIcon: {
-    fontSize: 20,
+    fontSize: 18,
+  },
+  profileAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#E5E7EB',
   },
   actionButtons: {
     paddingHorizontal: 20,
@@ -361,32 +369,27 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   reportButton: {
-    backgroundColor: '#4A90E2',
-    paddingVertical: 16,
-    borderRadius: 12,
+    backgroundColor: '#2563EB',
+    paddingVertical: 14,
+    borderRadius: 14,
     alignItems: 'center',
-    shadowColor: '#4A90E2',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 4,
   },
   reportButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
   searchButton: {
-    backgroundColor: 'white',
-    paddingVertical: 16,
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
+    borderRadius: 14,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: '#E5E7EB',
   },
   searchButtonText: {
-    color: '#333',
-    fontSize: 16,
+    color: '#111827',
+    fontSize: 15,
     fontWeight: '600',
   },
   recentActivitySection: {
@@ -394,26 +397,23 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
     paddingHorizontal: 20,
     marginBottom: 15,
   },
   listContent: {
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: 140,
   },
   card: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    marginBottom: 15,
-    padding: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    marginBottom: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   cardContent: {
     flexDirection: 'row',
@@ -421,78 +421,78 @@ const styles = StyleSheet.create({
   },
   cardLeft: {
     flex: 1,
-    marginRight: 15,
+    marginRight: 16,
     justifyContent: 'space-between',
   },
   locationText: {
     fontSize: 12,
-    color: '#888',
+    color: '#6B7280',
     marginBottom: 6,
   },
   statusText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#333',
+    color: '#111827',
     marginBottom: 8,
     lineHeight: 22,
   },
   dateText: {
     fontSize: 12,
-    color: '#999',
+    color: '#9CA3AF',
     marginBottom: 12,
   },
   claimButton: {
-    backgroundColor: '#4ECDC4',
+    backgroundColor: '#10B981',
     paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
+    paddingHorizontal: 18,
+    borderRadius: 999,
     alignSelf: 'flex-start',
   },
   claimButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
   cardRight: {
-    width: 100,
-    height: 100,
+    width: 96,
+    height: 96,
   },
   itemImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 8,
-    backgroundColor: '#E0E0E0',
+    borderRadius: 12,
+    backgroundColor: '#E5E7EB',
   },
   placeholderImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 8,
-    backgroundColor: '#F0F0F0',
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: '#E5E7EB',
   },
   placeholderIcon: {
     fontSize: 32,
   },
   emptyContainer: {
-    padding: 60,
+    padding: 56,
     alignItems: 'center',
   },
   emptyIcon: {
-    fontSize: 64,
-    marginBottom: 15,
+    fontSize: 48,
+    marginBottom: 12,
   },
   emptyText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#666',
-    marginBottom: 8,
+    color: '#374151',
+    marginBottom: 6,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#999',
+    color: '#9CA3AF',
     textAlign: 'center',
   },
   bottomNav: {
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
   },
   navTextActive: {
     fontSize: 12,
-    color: '#4A90E2',
+    color: '#2563EB',
     fontWeight: '600',
   },
   // Image Viewer Styles
