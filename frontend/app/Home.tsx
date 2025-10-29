@@ -58,13 +58,11 @@ export default function Home() {
   };
 
   const handleReportItem = () => {
-    // TODO: Navigate to report lost item screen
-    console.log('Navigate to Report Item screen');
+    // TODO: Implement navigation
   };
 
-  const handleSearchItem = () => {
-    // TODO: Navigate to search screen
-    console.log('Navigate to Search screen');
+  const handleSearch = () => {
+    // TODO: Implement navigation
   };
 
   const handleClaimItem = (item: LostItemPost) => {
@@ -100,7 +98,7 @@ export default function Home() {
 
         <TouchableOpacity
           style={styles.searchButton}
-          onPress={handleSearchItem}
+          onPress={handleSearch}
           activeOpacity={0.7}
         >
           <Text style={styles.searchButtonText}>Search for a Lost Item</Text>

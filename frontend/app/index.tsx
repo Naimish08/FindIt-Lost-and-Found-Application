@@ -8,8 +8,9 @@ export default function Index() {
 
   // Log only when these values change (reduces noisy per-render logs)
   useEffect(() => {
-    console.log("Auth:", isAuthenticated);
-    console.log("Loading:", loading);
+    if (!loading && !isAuthenticated) {
+      // Handle unauthenticated state if needed
+    }
   }, [isAuthenticated, loading]);
 
   useEffect(() => {
