@@ -1,19 +1,138 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Colors, Radius, Shadow } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLoading } from '@/contexts/LoadingContext';
+import { useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
   const auth = useAuth();
+  const loading = useLoading();
+  const router = useRouter();
   const [uploading, setUploading] = useState(false);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [postsError, setPostsError] = useState('');
+  const [myPosts, setMyPosts] = useState<Array<{ id: string | number; item_title: string; dateposted: string; images: string[] | null; location?: string }>>([]);
 
   const user = auth?.session?.user ?? null;
-  const avatarUrl = useMemo(() => (user?.user_metadata?.avatar_url as string) || 'https://i.pravatar.cc/100', [user]);
-  const displayName = (user?.user_metadata?.full_name as string) || user?.email || 'Signed in';
+  const [avatarUrl, setAvatarUrl] = useState<string>('https://i.pravatar.cc/100');
+  const [displayName, setDisplayName] = useState<string>('');
+  const [nameError, setNameError] = useState<string>('');
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadUsername = async () => {
+      try {
+        setNameError('');
+        if (!user?.id) {
+          setDisplayName('');
+          setAvatarUrl('https://i.pravatar.cc/100');
+          return;
+        }
+        const { data, error } = await supabase
+          .from('users')
+          .select('username, profileimage')
+          .eq('userid', user.id)
+          .single();
+        if (!isMounted) return;
+        if (error) {
+          setNameError(error.message);
+          // fallback to metadata/email local values
+          const fallback =
+            (user.user_metadata?.full_name as string) ||
+            (user.email ? user.email.split('@')[0] : '') ||
+            'User';
+          setDisplayName(fallback);
+          // avatar fallback to auth metadata or default
+          setAvatarUrl((user.user_metadata?.avatar_url as string) || 'https://i.pravatar.cc/100');
+          return;
+        }
+        setDisplayName(data?.username || 'User');
+        // Resolve avatar from users.profileimage (prefer path in bucket), then auth metadata
+        const profileImage: string | null | undefined = (data as any)?.profileimage;
+        if (profileImage) {
+          // If it's already a full URL use it; otherwise treat as storage path in 'avatars' bucket
+          const isUrl = /^https?:\/\//i.test(profileImage);
+          if (isUrl) {
+            setAvatarUrl(profileImage);
+          } else {
+            const { data: pub } = supabase.storage.from('avatars').getPublicUrl(profileImage);
+            setAvatarUrl(pub?.publicUrl || (user.user_metadata?.avatar_url as string) || 'https://i.pravatar.cc/100');
+          }
+        } else {
+          setAvatarUrl((user.user_metadata?.avatar_url as string) || 'https://i.pravatar.cc/100');
+        }
+      } catch (e: any) {
+        if (!isMounted) return;
+        setNameError(e?.message || 'Failed to load profile');
+        const fallback =
+          (user?.user_metadata?.full_name as string) ||
+          (user?.email ? user.email.split('@')[0] : '') ||
+          'User';
+        setDisplayName(fallback);
+        setAvatarUrl((user?.user_metadata?.avatar_url as string) || 'https://i.pravatar.cc/100');
+      }
+    };
+    loadUsername();
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
+
+  const loadMyPosts = useCallback(async () => {
+    let cancelled = false;
+    try {
+      setPostsError('');
+      setLoadingPosts(true);
+      if (!user?.id) {
+        setMyPosts([]);
+        return;
+      }
+      const { data, error } = await supabase
+        .from('lost_item_posts')
+        .select('postid, item_title, dateposted, images, location')
+        .eq('userid', user.id)
+        .order('dateposted', { ascending: false })
+        .limit(25);
+      if (cancelled) return;
+      if (error) {
+        setPostsError(error.message);
+        setMyPosts([]);
+        return;
+      }
+      const normalized = (data || []).map((d: any) => ({
+        id: d?.postid ?? d?.id,
+        item_title: d?.item_title,
+        dateposted: d?.dateposted,
+        images: d?.images ?? null,
+        location: d?.location,
+      }));
+      setMyPosts(normalized);
+    } catch (e: any) {
+      if (cancelled) return;
+      setPostsError(e?.message || 'Failed to load your posts');
+      setMyPosts([]);
+    } finally {
+      if (!cancelled) setLoadingPosts(false);
+    }
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadMyPosts();
+  }, [loadMyPosts]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadMyPosts();
+      return undefined;
+    }, [loadMyPosts])
+  );
 
   const base64ToUint8Array = (base64: string) => {
     const hasAtob = typeof globalThis.atob === 'function';
@@ -26,6 +145,7 @@ export default function ProfileScreen() {
 
   const pickAndUploadAvatar = async () => {
     try {
+      loading.show();
       if (!user) return;
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (perm.status !== 'granted') {
@@ -36,6 +156,9 @@ export default function ProfileScreen() {
       if (result.canceled || !result.assets?.[0]?.base64) return;
       setUploading(true);
       const asset = result.assets[0];
+      if (!asset.base64) {
+        throw new Error('Failed to read image data.');
+      }
       const ext = asset.fileName?.split('.').pop() || 'jpg';
       const path = `${user.id}/${Date.now()}.${ext}`;
       const contentType = `image/${ext}`;
@@ -44,24 +167,40 @@ export default function ProfileScreen() {
       if (uploadError) throw uploadError;
       const { data } = supabase.storage.from('avatars').getPublicUrl(path);
       const publicUrl = data.publicUrl;
+      // Update auth profile metadata for backward compatibility
       const { error: updateError } = await supabase.auth.updateUser({ data: { avatar_url: publicUrl } });
       if (updateError) throw updateError;
+      // Also persist path in users.profileimage, creating row if needed
+      const upsertPayload = { userid: user.id, profileimage: path } as any;
+      await supabase.from('users').upsert(upsertPayload, { onConflict: 'userid' });
+      setAvatarUrl(publicUrl);
       Alert.alert('Updated', 'Your avatar has been updated.');
     } catch (e: any) {
       Alert.alert('Upload failed', e?.message || 'Unknown error');
     } finally {
       setUploading(false);
+      loading.hide();
     }
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      loading.show();
+      await supabase.auth.signOut();
+    } finally {
+      loading.hide();
+    }
   };
 
   const handleResetPassword = async () => {
     if (!user?.email) return;
-    const { error } = await supabase.auth.resetPasswordForEmail(user.email);
-    if (error) Alert.alert('Reset failed', error.message); else Alert.alert('Check your email', 'Password reset link sent.');
+    try {
+      loading.show();
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email);
+      if (error) Alert.alert('Reset failed', error.message); else Alert.alert('Check your email', 'Password reset link sent.');
+    } finally {
+      loading.hide();
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -89,9 +228,42 @@ export default function ProfileScreen() {
       </View>
 
       <View style={[styles.section, { backgroundColor: Colors[colorScheme ?? 'light'].surface, borderColor: Colors[colorScheme ?? 'light'].border, borderRadius: Radius.lg }]}> 
-        <TouchableOpacity style={styles.row}> 
+        <View style={[styles.row, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}> 
           <Text style={[styles.rowText, { color: Colors[colorScheme ?? 'light'].text }]}>My Posts</Text>
-        </TouchableOpacity>
+          {loadingPosts ? <ActivityIndicator /> : null}
+        </View>
+        {postsError ? (
+          <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+            <Text style={{ color: Colors[colorScheme ?? 'light'].danger }}>{postsError}</Text>
+          </View>
+        ) : null}
+        {!loadingPosts && !postsError && myPosts.length === 0 ? (
+          <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+            <Text style={{ color: Colors[colorScheme ?? 'light'].textMuted }}>You haven't posted anything yet.</Text>
+          </View>
+        ) : null}
+        {!loadingPosts && myPosts.length > 0 ? (
+          <View style={{ paddingHorizontal: 8, paddingBottom: 8 }}>
+            {myPosts.map((p) => {
+              const thumb = Array.isArray(p.images) && p.images.length > 0 ? p.images[0] : undefined;
+              const dateStr = p.dateposted ? new Date(p.dateposted).toLocaleDateString() : '';
+              return (
+                <TouchableOpacity key={String(p.id)} onPress={() => router.push({ pathname: '/(protected)/item/[postid]', params: { postid: String(p.id) } } as any)}
+                  style={[styles.postItem, { borderColor: Colors[colorScheme ?? 'light'].border, backgroundColor: Colors[colorScheme ?? 'light'].surface }]}> 
+                  {thumb ? (
+                    <Image source={{ uri: thumb }} style={styles.postThumb} />
+                  ) : (
+                    <View style={[styles.postThumb, { backgroundColor: '#E5E7EB' }]} />
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text numberOfLines={1} style={[styles.postTitle, { color: Colors[colorScheme ?? 'light'].text }]}>{p.item_title}</Text>
+                    <Text style={[styles.postMeta, { color: Colors[colorScheme ?? 'light'].textMuted }]}>{dateStr}{p.location ? ` • ${p.location}` : ''}</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ) : null}
         <TouchableOpacity style={styles.row} onPress={handleResetPassword}> 
           <Text style={[styles.rowText, { color: Colors[colorScheme ?? 'light'].text }]}>Forgot/Reset password</Text>
         </TouchableOpacity>
@@ -121,6 +293,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     borderRadius: 16,
     padding: 16,
+    marginTop: 28,
   },
   avatar: {
     width: 56,
@@ -157,12 +330,38 @@ const styles = StyleSheet.create({
   },
   row: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 28,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
   rowText: {
     color: '#111827',
     fontWeight: '600',
+  },
+  postItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  postThumb: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: '#E5E7EB',
+  },
+  postTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  postMeta: {
+    marginTop: 2,
+    fontSize: 12,
+    color: '#6B7280',
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
  
 import {
   View,
@@ -17,9 +17,11 @@ import {
   Platform,
 } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Radius, Shadow } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAuth } from '@/contexts/AuthContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -38,6 +40,50 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const colorScheme = useColorScheme();
+  const router = useRouter();
+  const auth = useAuth();
+  const user = auth?.session?.user ?? null;
+  const [avatarUrl, setAvatarUrl] = useState<string>('https://i.pravatar.cc/72');
+
+  // Load current user's avatar from users.profileimage (Supabase Storage) or auth metadata
+  useEffect(() => {
+    let isMounted = true;
+    const loadAvatar = async () => {
+      try {
+        if (!user?.id) {
+          setAvatarUrl('https://i.pravatar.cc/72');
+          return;
+        }
+        const { data, error } = await supabase
+          .from('users')
+          .select('profileimage')
+          .eq('userid', user.id)
+          .single();
+        if (!isMounted) return;
+        if (error) {
+          setAvatarUrl((user.user_metadata?.avatar_url as string) || 'https://i.pravatar.cc/72');
+          return;
+        }
+        const profileImage: string | null | undefined = (data as any)?.profileimage;
+        if (profileImage) {
+          const isUrl = /^https?:\/\//i.test(profileImage);
+          if (isUrl) {
+            setAvatarUrl(profileImage);
+          } else {
+            const { data: pub } = supabase.storage.from('avatars').getPublicUrl(profileImage);
+            setAvatarUrl(pub?.publicUrl || (user.user_metadata?.avatar_url as string) || 'https://i.pravatar.cc/72');
+          }
+        } else {
+          setAvatarUrl((user.user_metadata?.avatar_url as string) || 'https://i.pravatar.cc/72');
+        }
+      } catch {
+        if (!isMounted) return;
+        setAvatarUrl((user?.user_metadata?.avatar_url as string) || 'https://i.pravatar.cc/72');
+      }
+    };
+    loadAvatar();
+    return () => { isMounted = false; };
+  }, [user?.id]);
 
   const fetchItems = async () => {
     try {
@@ -74,11 +120,19 @@ export default function Home() {
   };
 
   const handleReportItem = () => {
-    // TODO: Implement navigation
+    if (!user) {
+      router.push('/login' as any);
+      return;
+    }
+    router.push('/(protected)/(tabs)/post' as any);
   };
 
   const handleSearch = () => {
-    // TODO: Implement navigation
+    if (!user) {
+      router.push('/login' as any);
+      return;
+    }
+    router.push('/(protected)/(tabs)/search' as any);
   };
 
   const handleClaimItem = (item: LostItemPost) => {
@@ -96,9 +150,9 @@ export default function Home() {
           <View style={styles.logoContainer}>
             <Text style={[styles.logo, { color: Colors[colorScheme ?? 'light'].text }]}>FindIt</Text>
           </View>
-          <TouchableOpacity style={styles.profileButton}>
+          <TouchableOpacity style={styles.profileButton} onPress={() => router.push('/(protected)/(tabs)') as any}>
             <Image
-              source={{ uri: 'https://i.pravatar.cc/72' }}
+              source={{ uri: avatarUrl }}
               style={styles.profileAvatar}
             />
           </TouchableOpacity>
@@ -132,7 +186,7 @@ export default function Home() {
           data={items}
           keyExtractor={(item) => item.postid.toString()}
           renderItem={({ item }) => (
-            <ItemCard item={item} onClaim={() => handleClaimItem(item)} />
+            <ItemCard item={item} onClaim={() => handleClaimItem(item)} onOpen={() => router.push({ pathname: '/(protected)/item/[postid]', params: { postid: String(item.postid) } } as any)} />
           )}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
@@ -163,9 +217,10 @@ export default function Home() {
 interface ItemCardProps {
   item: LostItemPost;
   onClaim: () => void;
+  onOpen: () => void;
 }
 
-const ItemCard: React.FC<ItemCardProps> = ({ item, onClaim }) => {
+const ItemCard: React.FC<ItemCardProps> = ({ item, onClaim, onOpen }) => {
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const colorScheme = useColorScheme();
@@ -212,7 +267,7 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, onClaim }) => {
 
   return (
     <>
-      <TouchableOpacity style={[styles.card, { backgroundColor: Colors[colorScheme ?? 'light'].surface, borderColor: Colors[colorScheme ?? 'light'].border, borderRadius: Radius.md, ...Shadow.card }]} activeOpacity={0.95}>
+      <TouchableOpacity style={[styles.card, { backgroundColor: Colors[colorScheme ?? 'light'].surface, borderColor: Colors[colorScheme ?? 'light'].border, borderRadius: Radius.md, ...Shadow.card }]} activeOpacity={0.95} onPress={onOpen}>
         <View style={styles.cardContent}>
           <View style={styles.cardLeft}>
             <Text style={[styles.locationText, { color: Colors[colorScheme ?? 'light'].textMuted }]}>{item.location}</Text>

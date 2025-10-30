@@ -57,6 +57,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
     marginBottom: 16,
+    marginTop: 28,
   },
   searchRow: {
     flexDirection: 'row',

@@ -2,12 +2,15 @@ import { Stack } from "expo-router";
 import React from "react";
 import { StatusBar } from "expo-status-bar";
 import { AuthProvider } from "../contexts/AuthContext";
+import { LoadingProvider } from "../contexts/LoadingContext";
+import LoadingOverlay from "../components/common/LoadingOverlay";
 
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <StatusBar style="auto" />
-      <Stack>
+      <LoadingProvider>
+        <StatusBar style="auto" />
+        <Stack>
         <Stack.Screen
           name="index"
           options={{
@@ -36,6 +39,8 @@ export default function RootLayout() {
           }}
         />
       </Stack>
+      <LoadingOverlay />
+      </LoadingProvider>
     </AuthProvider>
   );
 }

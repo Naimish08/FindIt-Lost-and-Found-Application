@@ -27,7 +27,7 @@ export default function TabLayout() {
           height: 64,
           paddingBottom: 8,
           paddingTop: 8,
-          backgroundColor: (colorScheme === 'dark') ? 'rgba(17,24,39,0.92)' : 'rgba(255,255,255,0.92)',
+          backgroundColor: (colorScheme === 'dark') ? 'rgba(17,24,39,0.98)' : 'rgba(17,24,39,0.96)',
           borderTopWidth: 0,
           borderRadius: Radius.xl,
           borderWidth: 1,

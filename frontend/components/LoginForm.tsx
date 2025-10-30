@@ -3,24 +3,33 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import * as Linking from 'expo-linking';
 import InputField from "./common/InputField";
 import PrimaryButton from "./common/PrimaryButton";
-import { Link } from "expo-router";
+import { Link, router } from "expo-router";
 import { supabase } from '../lib/supabase'
 import LogoHeader from "./common/LogoHeader";
+import { useLoading } from "@/contexts/LoadingContext";
 
 const LoginForm: React.FC = () => {
+  const globalLoading = useLoading();
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
   async function signInWithEmail() {
     setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({
+    globalLoading.show();
+    const { error, data } = await supabase.auth.signInWithPassword({
       email: email,
       password: password,
     })
 
-    if (error) Alert.alert(error.message)
+    if (error) {
+      Alert.alert(error.message)
+    } else {
+      // Navigate immediately to the protected tabs on successful login
+      router.replace('/(protected)/(tabs)' as any)
+    }
     setLoading(false)
+    globalLoading.hide();
   }
 
   async function handleForgotPassword() {
@@ -30,6 +39,7 @@ const LoginForm: React.FC = () => {
     }
     try {
       setLoading(true);
+      globalLoading.show();
       const redirectTo = process.env.EXPO_PUBLIC_SUPABASE_RESET_REDIRECT || Linking.createURL('/');
       const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       if (error) {
@@ -39,6 +49,7 @@ const LoginForm: React.FC = () => {
       }
     } finally {
       setLoading(false);
+      globalLoading.hide();
     }
   }
 

@@ -15,14 +15,20 @@ import {
   Pressable,
   Alert,
 } from 'react-native';
+import { useWindowDimensions } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
 import { Colors, Radius, Shadow } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useRouter } from 'expo-router';
+import { useLoading } from '@/contexts/LoadingContext';
 
 export default function PostItem() {
+  const globalLoading = useLoading();
+  const { width } = useWindowDimensions();
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photos, setPhotos] = useState<string[]>([]);
   const [title, setTitle] = useState('');
@@ -33,6 +39,20 @@ export default function PostItem() {
   const [error, setError] = useState('');
   const [isLocating, setIsLocating] = useState(false);
   const colorScheme = useColorScheme();
+  const horizontalPadding = 16;
+  const thumbSize = Math.min(120, Math.max(80, Math.round(width * 0.24)));
+  const inputPaddingH = width < 360 ? 12 : 16;
+  const inputPaddingV = width < 360 ? 10 : 12;
+
+  const resetForm = () => {
+    setPhotos([]);
+    setTitle('');
+    setDescription('');
+    setLocation('');
+    setDate(new Date());
+    setShowDatePicker(false);
+    setError('');
+  };
 
   const uploadPhotosAndGetUrls = async (uris: string[], userId: string | number) => {
     if (uris.length === 0) return [] as string[];
@@ -138,6 +158,7 @@ export default function PostItem() {
 
   const handleUseMyLocation = async () => {
     try {
+      globalLoading.show();
       setError('');
       setIsLocating(true);
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -166,6 +187,7 @@ export default function PostItem() {
       setError(e?.message || 'Failed to fetch your location.');
     } finally {
       setIsLocating(false);
+      globalLoading.hide();
     }
   };
 
@@ -176,6 +198,7 @@ export default function PostItem() {
     }
 
     setIsSubmitting(true);
+    globalLoading.show();
     setError('');
 
     try {
@@ -212,14 +235,17 @@ export default function PostItem() {
       }
 
       Alert.alert('Success', 'Your lost item report has been submitted.');
+      resetForm();
     } catch (err: any) {
       setError(err?.message || 'An unexpected error occurred');
       console.error('Error:', err);
     } finally {
       setIsSubmitting(false);
+      globalLoading.hide();
     }
-  };  const handleCancel = () => {
-    // TODO: Navigate back
+  };
+  const handleCancel = () => {
+    router.back();
   };
 
   return (
@@ -250,7 +276,7 @@ export default function PostItem() {
           >
             {/* Add Photo Button */}
             <TouchableOpacity 
-              style={[styles.addPhotoButton, { borderColor: Colors[colorScheme ?? 'light'].primary, backgroundColor: (colorScheme === 'dark') ? 'rgba(37, 99, 235, 0.12)' : '#F3F6FF' }]}
+              style={[styles.addPhotoButton, { width: thumbSize, height: thumbSize, borderColor: Colors[colorScheme ?? 'light'].primary, backgroundColor: (colorScheme === 'dark') ? 'rgba(37, 99, 235, 0.12)' : '#F3F6FF' }]}
               onPress={handleAddPhoto}
             >
               <Ionicons name="camera-outline" size={32} color={Colors[colorScheme ?? 'light'].primary} />
@@ -259,8 +285,8 @@ export default function PostItem() {
 
             {/* Display added photos */}
             {photos.map((photo, index) => (
-              <View key={index} style={styles.photoItem}>
-                <Image source={{ uri: photo }} style={styles.photoImage} />
+              <View key={index} style={[styles.photoItem, { width: thumbSize, height: thumbSize }] }>
+                <Image source={{ uri: photo }} style={[styles.photoImage]} />
                 <TouchableOpacity 
                   style={[styles.removePhotoButton, { backgroundColor: Colors[colorScheme ?? 'light'].surface }]}
                   onPress={() => handleRemovePhoto(index)}
@@ -278,7 +304,7 @@ export default function PostItem() {
             Item Title<Text style={styles.required}>*</Text>
           </Text>
           <TextInput
-            style={[styles.input, { backgroundColor: Colors[colorScheme ?? 'light'].surface, borderColor: Colors[colorScheme ?? 'light'].border, color: Colors[colorScheme ?? 'light'].text, borderRadius: Radius.sm }]}
+            style={[styles.input, { paddingHorizontal: inputPaddingH, paddingVertical: inputPaddingV, backgroundColor: Colors[colorScheme ?? 'light'].surface, borderColor: Colors[colorScheme ?? 'light'].border, color: Colors[colorScheme ?? 'light'].text, borderRadius: Radius.sm }]}
             placeholder='e.g., "Brown Leather Wallet"'
             placeholderTextColor="#999"
             value={title}
@@ -290,7 +316,7 @@ export default function PostItem() {
         <View style={styles.section}>
           <Text style={[styles.label, { color: Colors[colorScheme ?? 'light'].text }]}>Description</Text>
           <TextInput
-            style={[styles.input, styles.textArea, { backgroundColor: Colors[colorScheme ?? 'light'].surface, borderColor: Colors[colorScheme ?? 'light'].border, color: Colors[colorScheme ?? 'light'].text, borderRadius: Radius.sm }]}
+            style={[styles.input, styles.textArea, { paddingHorizontal: inputPaddingH, paddingVertical: inputPaddingV, backgroundColor: Colors[colorScheme ?? 'light'].surface, borderColor: Colors[colorScheme ?? 'light'].border, color: Colors[colorScheme ?? 'light'].text, borderRadius: Radius.sm }]}
             placeholder="Describe the item and where you last saw it"
             placeholderTextColor="#999"
             value={description}
@@ -306,7 +332,7 @@ export default function PostItem() {
           <Text style={[styles.label, { color: Colors[colorScheme ?? 'light'].text }]}>
             Last Seen Location<Text style={styles.required}>*</Text>
           </Text>
-          <View style={[styles.locationInputContainer, { backgroundColor: Colors[colorScheme ?? 'light'].surface, borderColor: Colors[colorScheme ?? 'light'].border, borderRadius: Radius.sm }]}>
+          <View style={[styles.locationInputContainer, { paddingHorizontal: inputPaddingH, paddingVertical: inputPaddingV - 2, backgroundColor: Colors[colorScheme ?? 'light'].surface, borderColor: Colors[colorScheme ?? 'light'].border, borderRadius: Radius.sm }]}>
             <Ionicons name="location-outline" size={20} color="#999" style={styles.locationIcon} />
             <TextInput
               style={[styles.locationInput, { color: Colors[colorScheme ?? 'light'].text }]}
@@ -328,7 +354,7 @@ export default function PostItem() {
           <Text style={[styles.label, { color: Colors[colorScheme ?? 'light'].text }]}>
             Date & Time Lost<Text style={styles.required}>*</Text>
           </Text>
-          <View style={[styles.dateTimeContainer, { backgroundColor: Colors[colorScheme ?? 'light'].surface, borderColor: Colors[colorScheme ?? 'light'].border, borderRadius: Radius.sm }]}>
+          <View style={[styles.dateTimeContainer, { paddingHorizontal: inputPaddingH, paddingVertical: inputPaddingV - 2, backgroundColor: Colors[colorScheme ?? 'light'].surface, borderColor: Colors[colorScheme ?? 'light'].border, borderRadius: Radius.sm }]}>
             <Ionicons name="calendar-outline" size={20} color="#999" style={styles.dateIcon} />
             <Pressable
               style={styles.dateTimeInput}
