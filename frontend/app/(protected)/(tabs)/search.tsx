@@ -1,12 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, SafeAreaView } from 'react-native';
 import { Colors, Radius, Shadow } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function SearchScreen() {
   const colorScheme = useColorScheme();
   return (
-    <View style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
       <Text style={[styles.title, { color: Colors[colorScheme ?? 'light'].text }]}>Search</Text>
       <View style={styles.searchRow}>
         <TextInput
@@ -40,16 +40,17 @@ export default function SearchScreen() {
           <Text style={[styles.suggestionItem, { color: Colors[colorScheme ?? 'light'].textMuted }]}>black bag</Text>
         </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 8,
     backgroundColor: '#F9FAFB',
-    paddingBottom: 140,
+    paddingBottom: 24,
   },
   title: {
     fontSize: 22,
@@ -67,15 +68,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     color: '#111827',
   },
   searchButton: {
-    marginLeft: 10,
+    marginLeft: 8,
     backgroundColor: '#2563EB',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderRadius: 12,
   },
   searchButtonText: {

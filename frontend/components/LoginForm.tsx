@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
+import * as Linking from 'expo-linking';
 import InputField from "./common/InputField";
 import PrimaryButton from "./common/PrimaryButton";
 import { Link } from "expo-router";
@@ -20,6 +21,25 @@ const LoginForm: React.FC = () => {
 
     if (error) Alert.alert(error.message)
     setLoading(false)
+  }
+
+  async function handleForgotPassword() {
+    if (!email) {
+      Alert.alert('Enter your email', 'Please enter your email address first.');
+      return;
+    }
+    try {
+      setLoading(true);
+      const redirectTo = process.env.EXPO_PUBLIC_SUPABASE_RESET_REDIRECT || Linking.createURL('/');
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+      if (error) {
+        Alert.alert('Reset failed', error.message);
+      } else {
+        Alert.alert('Check your email', 'We sent a password reset link.');
+      }
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -46,6 +66,7 @@ const LoginForm: React.FC = () => {
         <TouchableOpacity 
           style={styles.forgotContainer}
           activeOpacity={0.7}
+          onPress={handleForgotPassword}
         >
           <Text style={styles.forgotText}>Forgot Password?</Text>
         </TouchableOpacity>
