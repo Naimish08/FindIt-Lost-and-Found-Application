@@ -66,12 +66,16 @@ const LoginForm: React.FC = () => {
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
         />
         <InputField
           placeholder="Password"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
         />
 
         <TouchableOpacity 

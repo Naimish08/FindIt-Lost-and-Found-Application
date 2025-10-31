@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Alert, ActivityIndicator, ScrollView, SafeAreaView, TextInput } from 'react-native';
 import { Colors, Radius, Shadow } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import * as ImagePicker from 'expo-image-picker';
@@ -23,6 +23,11 @@ export default function ProfileScreen() {
   const [avatarUrl, setAvatarUrl] = useState<string>('https://i.pravatar.cc/100');
   const [displayName, setDisplayName] = useState<string>('');
   const [nameError, setNameError] = useState<string>('');
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
+  const [newFullName, setNewFullName] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -36,7 +41,7 @@ export default function ProfileScreen() {
         }
         const { data, error } = await supabase
           .from('users')
-          .select('username, profileimage')
+          .select('username, profilepicture')
           .eq('userid', user.id)
           .single();
         if (!isMounted) return;
@@ -53,8 +58,8 @@ export default function ProfileScreen() {
           return;
         }
         setDisplayName(data?.username || 'User');
-        // Resolve avatar from users.profileimage (prefer path in bucket), then auth metadata
-        const profileImage: string | null | undefined = (data as any)?.profileimage;
+        // Resolve avatar from users.profilepicture (prefer path in bucket), then auth metadata
+        const profileImage: string | null | undefined = (data as any)?.profilepicture;
         if (profileImage) {
           // If it's already a full URL use it; otherwise treat as storage path in 'avatars' bucket
           const isUrl = /^https?:\/\//i.test(profileImage);
@@ -83,6 +88,15 @@ export default function ProfileScreen() {
       isMounted = false;
     };
   }, [user]);
+
+  useEffect(() => {
+    // Initialize edit fields when we have user/display data
+    if (user) {
+      setNewEmail(user.email || '');
+      setNewFullName((user.user_metadata?.full_name as string) || displayName || '');
+    }
+    setNewUsername(displayName || '');
+  }, [user, displayName]);
 
   const loadMyPosts = useCallback(async () => {
     let cancelled = false;
@@ -170,8 +184,8 @@ export default function ProfileScreen() {
       // Update auth profile metadata for backward compatibility
       const { error: updateError } = await supabase.auth.updateUser({ data: { avatar_url: publicUrl } });
       if (updateError) throw updateError;
-      // Also persist path in users.profileimage, creating row if needed
-      const upsertPayload = { userid: user.id, profileimage: path } as any;
+      // Also persist public URL in users.profilepicture, creating row if needed
+      const upsertPayload = { userid: user.id, profilepicture: publicUrl } as any;
       await supabase.from('users').upsert(upsertPayload, { onConflict: 'userid' });
       setAvatarUrl(publicUrl);
       Alert.alert('Updated', 'Your avatar has been updated.');
@@ -214,67 +228,182 @@ export default function ProfileScreen() {
     );
   };
 
-  return (
-    <View style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}> 
-      <View style={[styles.card, { backgroundColor: Colors[colorScheme ?? 'light'].surface, borderColor: Colors[colorScheme ?? 'light'].border, borderRadius: Radius.lg, ...Shadow.card }]}> 
-        <Image source={{ uri: avatarUrl }} style={styles.avatar} />
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.name, { color: Colors[colorScheme ?? 'light'].text }]}>{displayName}</Text>
-          <Text style={[styles.meta, { color: Colors[colorScheme ?? 'light'].textMuted }]}>{user?.email}</Text>
-        </View>
-        <TouchableOpacity style={[styles.editButton, { backgroundColor: Colors[colorScheme ?? 'light'].primary }]} onPress={pickAndUploadAvatar} disabled={uploading}>
-          {uploading ? <ActivityIndicator color="#fff" /> : <Text style={styles.editText}>Edit</Text>}
-        </TouchableOpacity>
-      </View>
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    const usernameTrimmed = (newUsername || '').trim();
+    const fullNameTrimmed = (newFullName || '').trim();
+    if (!usernameTrimmed) {
+      Alert.alert('Validation', 'Username is required.');
+      return;
+    }
+    try {
+      setSavingProfile(true);
+      // Update profile metadata (full_name) only; email cannot be changed here
+      const { error: authErr } = await supabase.auth.updateUser({
+        data: { full_name: fullNameTrimmed },
+      });
+      if (authErr) {
+        Alert.alert('Update failed', authErr.message);
+        return;
+      }
+      // Upsert users table with new username only
+      const upsertPayload: any = {
+        userid: user.id,
+        username: usernameTrimmed,
+      };
+      const { error: dbErr } = await supabase.from('users').upsert(upsertPayload, { onConflict: 'userid' });
+      if (dbErr) {
+        Alert.alert('Update failed', dbErr.message);
+        return;
+      }
+      setDisplayName(usernameTrimmed);
+      Alert.alert('Updated', 'Profile details updated. You may need to verify email changes.');
+      setEditingProfile(false);
+    } catch (e: any) {
+      Alert.alert('Update failed', e?.message || 'Unknown error');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
-      <View style={[styles.section, { backgroundColor: Colors[colorScheme ?? 'light'].surface, borderColor: Colors[colorScheme ?? 'light'].border, borderRadius: Radius.lg }]}> 
-        <View style={[styles.row, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}> 
-          <Text style={[styles.rowText, { color: Colors[colorScheme ?? 'light'].text }]}>My Posts</Text>
-          {loadingPosts ? <ActivityIndicator /> : null}
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}> 
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 140 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[styles.card, { backgroundColor: Colors[colorScheme ?? 'light'].surface, borderColor: Colors[colorScheme ?? 'light'].border, borderRadius: Radius.lg, ...Shadow.card }]}> 
+          <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.name, { color: Colors[colorScheme ?? 'light'].text }]}>{displayName}</Text>
+            <Text style={[styles.meta, { color: Colors[colorScheme ?? 'light'].textMuted }]}>{user?.email}</Text>
+          </View>
+          <TouchableOpacity style={[styles.editButton, { backgroundColor: Colors[colorScheme ?? 'light'].primary }]} onPress={pickAndUploadAvatar} disabled={uploading}>
+            {uploading ? <ActivityIndicator color="#fff" /> : <Text style={styles.editText}>Edit</Text>}
+          </TouchableOpacity>
         </View>
-        {postsError ? (
-          <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
-            <Text style={{ color: Colors[colorScheme ?? 'light'].danger }}>{postsError}</Text>
+
+        {/* Edit Profile Details */}
+        <View style={[styles.section, { backgroundColor: Colors[colorScheme ?? 'light'].surface, borderColor: Colors[colorScheme ?? 'light'].border, borderRadius: Radius.lg }]}> 
+          <View style={[styles.row, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}> 
+            <Text style={[styles.rowText, { color: Colors[colorScheme ?? 'light'].text }]}>Edit profile</Text>
+            {!editingProfile ? (
+              <TouchableOpacity onPress={() => setEditingProfile(true)}>
+                <Text style={{ color: Colors[colorScheme ?? 'light'].primary, fontWeight: '700' }}>Edit</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
-        ) : null}
-        {!loadingPosts && !postsError && myPosts.length === 0 ? (
-          <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
-            <Text style={{ color: Colors[colorScheme ?? 'light'].textMuted }}>You haven't posted anything yet.</Text>
-          </View>
-        ) : null}
-        {!loadingPosts && myPosts.length > 0 ? (
-          <View style={{ paddingHorizontal: 8, paddingBottom: 8 }}>
-            {myPosts.map((p) => {
-              const thumb = Array.isArray(p.images) && p.images.length > 0 ? p.images[0] : undefined;
-              const dateStr = p.dateposted ? new Date(p.dateposted).toLocaleDateString() : '';
-              return (
-                <TouchableOpacity key={String(p.id)} onPress={() => router.push({ pathname: '/(protected)/item/[postid]', params: { postid: String(p.id) } } as any)}
-                  style={[styles.postItem, { borderColor: Colors[colorScheme ?? 'light'].border, backgroundColor: Colors[colorScheme ?? 'light'].surface }]}> 
-                  {thumb ? (
-                    <Image source={{ uri: thumb }} style={styles.postThumb} />
+          {editingProfile ? (
+            <View style={{ paddingHorizontal: 16, paddingBottom: 16, gap: 12 }}>
+              <View>
+                <Text style={[styles.inputLabel, { color: Colors[colorScheme ?? 'light'].textMuted }]}>Username</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: Colors[colorScheme ?? 'light'].surface, borderColor: Colors[colorScheme ?? 'light'].border, color: Colors[colorScheme ?? 'light'].text }]}
+                  placeholder="Your username"
+                  placeholderTextColor="#9CA3AF"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  value={newUsername}
+                  onChangeText={setNewUsername}
+                />
+              </View>
+              <View>
+                <Text style={[styles.inputLabel, { color: Colors[colorScheme ?? 'light'].textMuted }]}>Name</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: Colors[colorScheme ?? 'light'].surface, borderColor: Colors[colorScheme ?? 'light'].border, color: Colors[colorScheme ?? 'light'].text }]}
+                  placeholder="Your full name"
+                  placeholderTextColor="#9CA3AF"
+                  value={newFullName}
+                  onChangeText={setNewFullName}
+                />
+              </View>
+              <View>
+                <Text style={[styles.inputLabel, { color: Colors[colorScheme ?? 'light'].textMuted }]}>Email</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: Colors[colorScheme ?? 'light'].surface, borderColor: Colors[colorScheme ?? 'light'].border, color: Colors[colorScheme ?? 'light'].text }]}
+                  placeholder="you@example.com"
+                  placeholderTextColor="#9CA3AF"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  editable={false}
+                  value={user?.email || ''}
+                />
+              </View>
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
+                <TouchableOpacity
+                  style={[styles.primaryAction, { backgroundColor: Colors[colorScheme ?? 'light'].primary }]}
+                  onPress={handleSaveProfile}
+                  disabled={savingProfile}
+                >
+                  {savingProfile ? (
+                    <ActivityIndicator color="#fff" />
                   ) : (
-                    <View style={[styles.postThumb, { backgroundColor: '#E5E7EB' }]} />
+                    <Text style={styles.primaryActionText}>Save</Text>
                   )}
-                  <View style={{ flex: 1 }}>
-                    <Text numberOfLines={1} style={[styles.postTitle, { color: Colors[colorScheme ?? 'light'].text }]}>{p.item_title}</Text>
-                    <Text style={[styles.postMeta, { color: Colors[colorScheme ?? 'light'].textMuted }]}>{dateStr}{p.location ? ` • ${p.location}` : ''}</Text>
-                  </View>
                 </TouchableOpacity>
-              );
-            })}
+                <TouchableOpacity
+                  style={[styles.secondaryAction, { borderColor: Colors[colorScheme ?? 'light'].border }]}
+                  onPress={() => setEditingProfile(false)}
+                >
+                  <Text style={[styles.secondaryActionText, { color: Colors[colorScheme ?? 'light'].text }]}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : null}
+        </View>
+
+        <View style={[styles.section, { backgroundColor: Colors[colorScheme ?? 'light'].surface, borderColor: Colors[colorScheme ?? 'light'].border, borderRadius: Radius.lg }]}> 
+          <View style={[styles.row, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}> 
+            <Text style={[styles.rowText, { color: Colors[colorScheme ?? 'light'].text }]}>My Posts</Text>
+            {loadingPosts ? <ActivityIndicator /> : null}
           </View>
-        ) : null}
-        <TouchableOpacity style={styles.row} onPress={handleResetPassword}> 
-          <Text style={[styles.rowText, { color: Colors[colorScheme ?? 'light'].text }]}>Forgot/Reset password</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.row} onPress={handleSignOut}> 
-          <Text style={[styles.rowText, { color: Colors[colorScheme ?? 'light'].text }]}>Sign out</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.row} onPress={handleDeleteAccount}> 
-          <Text style={[styles.rowText, { color: Colors[colorScheme ?? 'light'].danger }]}>Delete account</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+          {postsError ? (
+            <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+              <Text style={{ color: Colors[colorScheme ?? 'light'].danger }}>{postsError}</Text>
+            </View>
+          ) : null}
+          {!loadingPosts && !postsError && myPosts.length === 0 ? (
+            <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+              <Text style={{ color: Colors[colorScheme ?? 'light'].textMuted }}>You haven't posted anything yet.</Text>
+            </View>
+          ) : null}
+          {!loadingPosts && myPosts.length > 0 ? (
+            <View style={{ paddingHorizontal: 8, paddingBottom: 8 }}>
+              {myPosts.map((p) => {
+                const thumb = Array.isArray(p.images) && p.images.length > 0 ? p.images[0] : undefined;
+                const dateStr = p.dateposted ? new Date(p.dateposted).toLocaleDateString() : '';
+                return (
+                  <TouchableOpacity key={String(p.id)} onPress={() => router.push({ pathname: '/(protected)/item/[postid]', params: { postid: String(p.id) } } as any)}
+                    style={[styles.postItem, { borderColor: Colors[colorScheme ?? 'light'].border, backgroundColor: Colors[colorScheme ?? 'light'].surface }]}> 
+                    {thumb ? (
+                      <Image source={{ uri: thumb }} style={styles.postThumb} />
+                    ) : (
+                      <View style={[styles.postThumb, { backgroundColor: '#E5E7EB' }]} />
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text numberOfLines={1} style={[styles.postTitle, { color: Colors[colorScheme ?? 'light'].text }]}>{p.item_title}</Text>
+                      <Text style={[styles.postMeta, { color: Colors[colorScheme ?? 'light'].textMuted }]}>{dateStr}{p.location ? ` • ${p.location}` : ''}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ) : null}
+          <TouchableOpacity style={styles.row} onPress={handleResetPassword}> 
+            <Text style={[styles.rowText, { color: Colors[colorScheme ?? 'light'].text }]}>Forgot/Reset password</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.row} onPress={handleSignOut}> 
+            <Text style={[styles.rowText, { color: Colors[colorScheme ?? 'light'].text }]}>Sign out</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.row} onPress={handleDeleteAccount}> 
+            <Text style={[styles.rowText, { color: Colors[colorScheme ?? 'light'].danger }]}>Delete account</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -283,7 +412,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
     padding: 20,
-    paddingBottom: 140,
+    // Avoid double bottom spacing above the floating tab bar; ScrollView already adds paddingBottom
+    paddingBottom: 24,
   },
   card: {
     flexDirection: 'row',

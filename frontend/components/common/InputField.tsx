@@ -6,7 +6,14 @@ interface InputFieldProps extends TextInputProps {
 }
 
 const InputField: React.FC<InputFieldProps> = ({ placeholder, ...rest }) => {
-  return <TextInput style={styles.input} placeholder={placeholder} {...rest} />;
+  return (
+    <TextInput
+      style={styles.input}
+      placeholder={placeholder}
+      placeholderTextColor={(rest as any).placeholderTextColor || "#6b7280"}
+      {...rest}
+    />
+  );
 };
 
 const styles = StyleSheet.create({
@@ -18,6 +25,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: "#ddd",
+    color: "#111",
   },
 });
 

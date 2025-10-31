@@ -4,7 +4,13 @@ import RegisterForm from "../components/RegisterForm";
 
 export default function RegisterScreen() {
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      contentInsetAdjustmentBehavior="always"
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.formWrapper}>
         <RegisterForm />
       </View>

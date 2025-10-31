@@ -4,7 +4,13 @@ import LoginForm from "../components/LoginForm";
 
 export default function LoginScreen() {
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      contentInsetAdjustmentBehavior="always"
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.formWrapper}>
         <LoginForm />
       </View>

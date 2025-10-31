@@ -433,6 +433,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
+    marginTop: 16,
     backgroundColor: 'rgba(0,0,0,0.5)',
     backdropFilter: 'blur(10px)',
     justifyContent: 'center',

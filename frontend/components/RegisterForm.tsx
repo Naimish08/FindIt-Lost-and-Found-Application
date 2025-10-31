@@ -57,9 +57,9 @@ const RegisterForm = () => {
       <Text style={styles.title}>Create Your FindIt Account</Text>
 
       <InputField placeholder="Username" value={username} onChangeText={setUsername} />
-      <InputField placeholder="Email" value={email} onChangeText={setEmail} keyboardType="email-address" />
-      <InputField placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry />
-      <InputField placeholder="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry />
+      <InputField placeholder="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+      <InputField placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" autoCorrect={false} />
+      <InputField placeholder="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry autoCapitalize="none" autoCorrect={false} />
 
       <CheckboxText />
 
