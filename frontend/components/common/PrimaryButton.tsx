@@ -47,6 +47,7 @@ const PrimaryButton: React.FC<ButtonProps> = ({ title, onPress, disabled = false
 const styles = StyleSheet.create({
   button: {
     paddingVertical: 14,
+    paddingHorizontal: 16,
     width: "100%",
     alignItems: "center",
     marginBottom: 16,

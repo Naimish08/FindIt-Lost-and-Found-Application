@@ -40,7 +40,7 @@ const LoginForm: React.FC = () => {
     try {
       setLoading(true);
       globalLoading.show();
-      const redirectTo = process.env.EXPO_PUBLIC_SUPABASE_RESET_REDIRECT || Linking.createURL('/');
+      const redirectTo = process.env.EXPO_PUBLIC_SUPABASE_RESET_REDIRECT || Linking.createURL('/reset-password');
       const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       if (error) {
         Alert.alert('Reset failed', error.message);
