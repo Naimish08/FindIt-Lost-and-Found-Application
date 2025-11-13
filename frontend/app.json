@@ -5,11 +5,15 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "Findit",
+    "scheme": "findit",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.naimish.findit",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.naimish.findit",
@@ -51,7 +55,13 @@
         "projectId": "354f0a7d-233a-458d-8eaa-95c392c3ecd1"
       }
     },
-    "owner": "naimishshah23"
+    "owner": "naimishshah23",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/354f0a7d-233a-458d-8eaa-95c392c3ecd1"
+    }
   },
   "android": {
     "package": "com.naimish.findit",

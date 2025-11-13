@@ -1,6 +1,6 @@
 type TableName = 'users' | 'posts' | 'claims' | 'notifications'
 
-export class SupabaseClientMock {
+export class SupabaseClient {
   async insert(table: TableName, payload: unknown): Promise<{ ok: boolean; data: unknown }> {
     return { ok: true, data: { table, payload } }
   }

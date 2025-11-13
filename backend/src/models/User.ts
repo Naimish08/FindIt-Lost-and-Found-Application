@@ -1,4 +1,4 @@
-import { SupabaseClientMock } from '../supabase/SupabaseClient'
+import { SupabaseClient} from '../supabase/SupabaseClient'
 
 export class User {
   userID: number
@@ -6,7 +6,7 @@ export class User {
   email: string
   password: string
   profilePicture: string
-  private static client = new SupabaseClientMock()
+  private static client = new SupabaseClient()
 
   constructor(params: { userID: number; username: string; email: string; password: string; profilePicture: string }) {
     this.userID = params.userID

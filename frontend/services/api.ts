@@ -77,6 +77,14 @@ export const authAPI = {
     return response.json();
   },
 
+  async updateProfile(userId: string, username?: string, email?: string, profilePicture?: string) {
+    const response = await apiCall(`/api/users/${userId}/profile`, {
+      method: 'POST',
+      body: JSON.stringify({ username, email, profilePicture }),
+    });
+    return response.json();
+  },
+
   async logout() {
     await tokenManager.removeToken();
   },

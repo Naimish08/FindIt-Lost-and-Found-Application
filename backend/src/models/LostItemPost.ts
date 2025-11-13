@@ -1,4 +1,4 @@
-import { SupabaseClientMock } from '../supabase/SupabaseClient'
+import { SupabaseClient } from '../supabase/SupabaseClient'
 
 export class LostItemPost {
   postID: number
