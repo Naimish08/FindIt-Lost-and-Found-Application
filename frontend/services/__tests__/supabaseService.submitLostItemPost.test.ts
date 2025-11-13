@@ -48,6 +48,7 @@ describe('submitLostItemPost', () => {
     } as any);
 
     const result = await submitLostItemPost(title, description, location, images);
+    console.log('Actual Output:', JSON.stringify(result));
 
     expect(result.success).toBe(true);
     expect(result.postid).toBe(10);
@@ -55,7 +56,7 @@ describe('submitLostItemPost', () => {
 
   test('❌ Missing description', async () => {
     // Input: {userid:1, location:"Library"}
-    // Expected: {error:"Description required"}
+    // Expected: {success:false, error:"Description required"}
     const title = '';
     const description = '';
     const location = 'Library';
@@ -86,6 +87,7 @@ describe('submitLostItemPost', () => {
     } as any);
 
     const result = await submitLostItemPost(title, description, location, images);
+    console.log('Actual Output:', JSON.stringify(result));
 
     expect(result.success).toBe(false);
     expect(result.error).toBe('Description required');
@@ -93,7 +95,7 @@ describe('submitLostItemPost', () => {
 
   test('❌ Missing location', async () => {
     // Input: {userid:1, description:"Wallet"}
-    // Expected: {error:"Location required"}
+    // Expected: {success:false, error:"Location required"}
     const title = 'Lost Wallet';
     const description = 'Wallet';
     const location = '';
@@ -124,6 +126,7 @@ describe('submitLostItemPost', () => {
     } as any);
 
     const result = await submitLostItemPost(title, description, location, images);
+    console.log('Actual Output:', JSON.stringify(result));
 
     expect(result.success).toBe(false);
     expect(result.error).toBe('Location required');
@@ -131,7 +134,7 @@ describe('submitLostItemPost', () => {
 
   test('❌ Wrong image datatype', async () => {
     // Input: {images:"wrong"}
-    // Expected: {error:"Images must be array"}
+    // Expected: {success:false, error:"Images must be array"}
     const title = 'Lost Wallet';
     const description = 'Wallet';
     const location = 'Library';
@@ -162,6 +165,7 @@ describe('submitLostItemPost', () => {
     } as any);
 
     const result = await submitLostItemPost(title, description, location, images);
+    console.log('Actual Output:', JSON.stringify(result));
 
     expect(result.success).toBe(false);
     expect(result.error).toBe('Images must be array');

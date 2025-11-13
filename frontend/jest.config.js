@@ -1,4 +1,5 @@
 module.exports = {
+  verbose: true,
   projects: [
     // Service tests - use Node environment (no React Native needed)
     {
@@ -21,6 +22,7 @@ module.exports = {
         '!**/*.d.ts',
         '!**/node_modules/**',
       ],
+      silent: false,
     },
     // Component/UI tests - use jest-expo preset
     {
@@ -44,6 +46,7 @@ module.exports = {
       },
       clearMocks: true,
       restoreMocks: true,
+      silent: false,
     },
   ],
   collectCoverageFrom: [

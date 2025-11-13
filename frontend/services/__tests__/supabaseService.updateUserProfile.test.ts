@@ -34,13 +34,14 @@ describe('updateUserProfile', () => {
     } as any);
 
     const result = await updateUserProfile(userId, username, undefined, profilePicture);
+    console.log('Actual Output:', JSON.stringify(result));
 
     expect(result.updated).toBe(true);
   });
 
   test('❌ User not found', async () => {
     // Input: {userid:999}
-    // Expected: {error:"User not found"}
+    // Expected: {updated:false, error:"User not found"}
     const userId = '999';
     const username = 'Naimish S';
 
@@ -63,6 +64,7 @@ describe('updateUserProfile', () => {
     } as any);
 
     const result = await updateUserProfile(userId, username);
+    console.log('Actual Output:', JSON.stringify(result));
 
     expect(result.updated).toBe(false);
     expect(result.error).toBe('User not found');
@@ -70,7 +72,7 @@ describe('updateUserProfile', () => {
 
   test('❌ Invalid email format', async () => {
     // Input: {email:"wrong"}
-    // Expected: {error:"Invalid email"}
+    // Expected: {updated:false, error:"Invalid email"}
     const userId = '1';
     const email = 'wrong';
 
@@ -85,6 +87,7 @@ describe('updateUserProfile', () => {
     });
 
     const result = await updateUserProfile(userId, undefined, email);
+    console.log('Actual Output:', JSON.stringify(result));
 
     expect(result.updated).toBe(false);
     expect(result.error).toBe('Invalid email');
@@ -92,7 +95,7 @@ describe('updateUserProfile', () => {
 
   test('❌ Empty update object', async () => {
     // Input: {userid:1}
-    // Expected: {error:"No fields to update"}
+    // Expected: {updated:false, error:"No fields to update"}
     const userId = '1';
 
     mockUpdateUser.mockResolvedValueOnce({
@@ -114,6 +117,7 @@ describe('updateUserProfile', () => {
     } as any);
 
     const result = await updateUserProfile(userId);
+    console.log('Actual Output:', JSON.stringify(result));
 
     expect(result.updated).toBe(false);
     expect(result.error).toBe('No fields to update');

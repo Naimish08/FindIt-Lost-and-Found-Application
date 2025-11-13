@@ -16,7 +16,7 @@ describe('registerUser', () => {
 
   test('✅ Register with valid data', async () => {
     // Input: {username:"naimish", email:"a@b.com", password:"1234"}
-    // Expected: {success:true, userid:1}
+    // Expected: {success:true, userid:"1"}
     const username = 'naimish';
     const email = 'a@b.com';
     const password = '1234';
@@ -42,6 +42,7 @@ describe('registerUser', () => {
     } as any);
 
     const result = await registerUser(username, email, password);
+    console.log('Actual Output:', JSON.stringify(result));
 
     expect(result.success).toBe(true);
     expect(result.userid).toBe('1');
@@ -49,7 +50,7 @@ describe('registerUser', () => {
 
   test('❌ Email already exists', async () => {
     // Input: Same email again
-    // Expected: {error:"Email already registered"}
+    // Expected: {success:false, error:"Email already registered"}
     const username = 'naimish';
     const email = 'a@b.com';
     const password = '1234';
@@ -65,6 +66,7 @@ describe('registerUser', () => {
     });
 
     const result = await registerUser(username, email, password);
+    console.log('Actual Output:', JSON.stringify(result));
 
     expect(result.success).toBe(false);
     expect(result.error).toBe('Email already registered');
@@ -72,7 +74,7 @@ describe('registerUser', () => {
 
   test('❌ Missing password', async () => {
     // Input: {email:"a@b.com"}
-    // Expected: {error:"Password required"}
+    // Expected: {success:false, error:"Password required"}
     const username = 'naimish';
     const email = 'a@b.com';
     const password = '';
@@ -88,6 +90,7 @@ describe('registerUser', () => {
     });
 
     const result = await registerUser(username, email, password);
+    console.log('Actual Output:', JSON.stringify(result));
 
     expect(result.success).toBe(false);
     expect(result.error).toBe('Password required');
@@ -95,7 +98,7 @@ describe('registerUser', () => {
 
   test('❌ Invalid email format', async () => {
     // Input: {email:"wrong", password:"1234"}
-    // Expected: {error:"Invalid email"}
+    // Expected: {success:false, error:"Invalid email"}
     const username = 'naimish';
     const email = 'wrong';
     const password = '1234';
@@ -111,6 +114,7 @@ describe('registerUser', () => {
     });
 
     const result = await registerUser(username, email, password);
+    console.log('Actual Output:', JSON.stringify(result));
 
     expect(result.success).toBe(false);
     expect(result.error).toBe('Invalid email');

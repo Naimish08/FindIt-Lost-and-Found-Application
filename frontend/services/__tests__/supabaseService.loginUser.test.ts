@@ -14,7 +14,7 @@ describe('loginUser', () => {
 
   test('✅ Correct email + password', async () => {
     // Input: {email:"a@b.com", password:"1234"}
-    // Expected: {success:true, userid:1}
+    // Expected: {success:true, userid:"1"}
     const email = 'a@b.com';
     const password = '1234';
 
@@ -27,6 +27,7 @@ describe('loginUser', () => {
     });
 
     const result = await loginUser(email, password);
+    console.log('Actual Output:', JSON.stringify(result));
 
     expect(result.success).toBe(true);
     expect(result.userid).toBe('1');
@@ -34,7 +35,7 @@ describe('loginUser', () => {
 
   test('❌ Wrong password', async () => {
     // Input: password:"9999"
-    // Expected: {error:"Invalid password"}
+    // Expected: {success:false, error:"Invalid password"}
     const email = 'a@b.com';
     const password = '9999';
 
@@ -49,6 +50,7 @@ describe('loginUser', () => {
     });
 
     const result = await loginUser(email, password);
+    console.log('Actual Output:', JSON.stringify(result));
 
     expect(result.success).toBe(false);
     expect(result.error).toBe('Invalid password');
@@ -56,7 +58,7 @@ describe('loginUser', () => {
 
   test('❌ Email not registered', async () => {
     // Input: unknown email
-    // Expected: {error:"User not found"}
+    // Expected: {success:false, error:"User not found"}
     const email = 'unknown@example.com';
     const password = '1234';
 
@@ -71,6 +73,7 @@ describe('loginUser', () => {
     });
 
     const result = await loginUser(email, password);
+    console.log('Actual Output:', JSON.stringify(result));
 
     expect(result.success).toBe(false);
     expect(result.error).toBe('User not found');
@@ -78,7 +81,7 @@ describe('loginUser', () => {
 
   test('❌ Missing email', async () => {
     // Input: {password:"1234"}
-    // Expected: {error:"Email required"}
+    // Expected: {success:false, error:"Email required"}
     const email = '';
     const password = '1234';
 
@@ -93,6 +96,7 @@ describe('loginUser', () => {
     });
 
     const result = await loginUser(email, password);
+    console.log('Actual Output:', JSON.stringify(result));
 
     expect(result.success).toBe(false);
     expect(result.error).toBe('Email required');
